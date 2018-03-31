@@ -15,17 +15,7 @@ SovaSettingLocal SovaSet;
 WiFiUDP Udp;
 IPAddress ServerIP;
 String Cyclogramm = "Data.cyc";
-//String CurrentCyclogramm;
-//String CyclogrammForSend;
-//String CyclogrammForRecieve;
-//byte TypeSendCyclogramm;
-//byte ResponseSendCyclogramm;
-//String FinalCyclogramm;
 byte ClientState;
-//int CountFiles;
-
-//String *hh;
-//char **CyclogrammFiles;
 
 uint32 CurrentTime = 0; // Момент времени с которого запуститься циклограмма
 unsigned long MainLoopTime1, MainLoopTime2;  // Для подсчета временного интервала работы программы на главном цикле для отправки пакета с номером клиента на сервер с задержкой
@@ -33,9 +23,6 @@ unsigned long LedTime1, LedTime2;  // Для подсчета временног
 unsigned long PauseTime1, PauseTime2;  // Для подсчета временного интервала работы программы на цикле паузы
 int ColorIndex; // Индекс в массиве LedArray, от 0 до количества светодиодов -1
 byte PackageParseResult; // Результат парсинга полученного пакета (по кодам пакетов в протоколе передачи)
-//int addr = 0;
-//uint8_t attyu;
-//uint8_t attyu2;
 
 void setup()
 {
@@ -53,19 +40,7 @@ LabelRestartSD:  // Старт/рестарт инициализации SD ка
 	else {
 		Serial.println(" successful!");
 	}
-	//CountFiles = LoadFiles();
-	//Serial.print("Count files: "); Serial.println(CountFiles);
-	//Serial.println("Available files: ");
-	//for (int i = 0; i < CountFiles; i++)
-	//{
-	//	File tmpFile = SD.open(CyclogrammFiles[i], FILE_READ);
-	//	if (tmpFile.available())
-	//	{
-	//		Serial.print(" - "); Serial.println(CyclogrammFiles[i]);
-	//	}
-	//	tmpFile.close();
-	//}
-	//CurrentCyclogramm = CyclogrammFiles[0];
+
 	SettingFile = SD.open("set.txt", FILE_READ);
 	SovaSet.ReadSetting(SettingFile);
 	Serial.println();
@@ -111,8 +86,6 @@ LabelRestartSD:  // Старт/рестарт инициализации SD ка
 		delay(100);
 		ParsePackage();
 	}
-	//SendPackage(3);
-
 	FastLED.clear(true);
 	MainLoopTime1 = millis();
 }
@@ -129,7 +102,6 @@ LabelStop:
 	}
 	else if ((MainLoopTime2 - MainLoopTime1) > 10)
 	{
-		//FastLED.showColor(CRGB::Blue, 100);
 		PackageParseResult = ParsePackage();
 		if (PackageParseResult == 1 || PackageParseResult == 7) {
 		LabelStart:
@@ -211,8 +183,6 @@ LabelStop:
 	}
 }
 
-// --------------------------------------------------
-
 void WiFiConnect() {
 	unsigned long ConnectionTime = 0;
 	if (WiFi.SSID() == SovaSet.SSID)
@@ -234,24 +204,16 @@ void WiFiConnect() {
 	if (WiFi.status() != WL_CONNECTED)
 	{
 		Serial.print("New connecting to WiFi: "); Serial.println(SovaSet.SSID);
-		//LabelConnection:
 		WiFi.disconnect();
 		WiFi.begin(SovaSet.SSID.c_str(), SovaSet.Password.c_str());
 		FastLED.showColor(CRGB::Gold, 100);
 		while (WiFi.status() != WL_CONNECTED) {
 			delay(10);
-			/*if (ConnectionTime > 10000)
-			{
-
-			goto LabelConnection;
-			}
-			ConnectionTime += 10;*/
 		}
 		FastLED.clear(true);
 	}
 	Serial.println("");
 	Serial.println("WiFi connected");
-	//WiFi.setAutoReconnect(true);
 	Serial.print("Local IP: "); Serial.println(WiFi.localIP());
 }
 
@@ -274,7 +236,6 @@ LabelConnection:
 	FastLED.clear(true);
 	Serial.println("");
 	Serial.println("WiFi connected");
-	//WiFi.setAutoReconnect(true);
 	Serial.print("Local IP: "); Serial.println(WiFi.localIP());
 }
 
@@ -331,35 +292,6 @@ void SendPackage(uint8 PackageType)
 		PackageBody[7] = SovaSet.PlateNumber;
 		PackageBody[8] = ClientState;
 		break;
-		//case 10:
-		//	ContLength = CyclogrammForSend.length() + 2;
-		//	PackageBody[5] = (ContLength >> 8) & 0xFF;
-		//	PackageBody[6] = (ContLength >> 0) & 0xFF;
-		//	PackageBody[7] = SovaSet.PlateNumber;
-		//	PackageBody[8] = TypeSendCyclogramm;
-		//	uint16 stringIndex;
-		//	stringIndex = 0;
-		//	for (size_t j = 9; j < ContLength + 8; j++)
-		//	{
-		//		PackageBody[j] = CyclogrammForSend[stringIndex];
-		//		stringIndex++;
-		//	}
-		//	break;
-		//case 14:
-		//	ContLength = FinalCyclogramm.length() + 1;
-		//	PackageBody[5] = (ContLength >> 8) & 0xFF;
-		//	PackageBody[6] = (ContLength >> 0) & 0xFF;
-		//	PackageBody[7] = SovaSet.PlateNumber;
-		//	uint16 startIndex2;
-		//	startIndex2 = ContLength + 6;
-		//	uint16 stringIndex2;
-		//	stringIndex2 = 0;
-		//	for (size_t j = 8; j < ContLength + 7; j++)
-		//	{
-		//		PackageBody[j] = FinalCyclogramm[stringIndex2];
-		//		stringIndex2++;
-		//	}
-		//	break;
 	default:
 		break;
 	}
@@ -415,10 +347,6 @@ byte ParsePackage() {
 		if (Key == SovaSet.ProjectKey)
 		{
 			ptype = Udp.read();
-			//Serial.println();
-			//Serial.println();
-			//Serial.println();
-			//Serial.print("Package: "); Serial.println(ptype);
 			switch (ptype)
 			{
 			case 1:
@@ -456,9 +384,6 @@ byte ParsePackage() {
 					}
 				}
 				break;
-				//case 4:
-				//	result = 4;
-				//	break;
 			case 5:
 				ContentLength = (Udp.read() << 8) + (Udp.read());
 				ServerIP.operator[](0) = Udp.read();
@@ -477,40 +402,6 @@ byte ParsePackage() {
 				CurrentTime *= (SovaSet.LEDCount * 3);
 				result = 7;
 				break;
-				//			case 9:
-				//				ContentLength = (Udp.read() << 8) + (Udp.read());
-				//				PlateNumber = Udp.read();
-				//				if (PlateNumber == SovaSet.PlateNumber)
-				//				{
-				//					ResponseSendCyclogramm = Udp.read();
-				//					CyclogrammForRecieve = "";
-				//					for (size_t i = 0; i < ContentLength - 2; i++)
-				//					{
-				//						CyclogrammForRecieve += char(Udp.read());
-				//					}
-				//					if (ResponseSendCyclogramm == 1)
-				//					{
-				//						String tmpCyc = CyclogrammForRecieve += ".cyc";
-				//						File tmpFile = SD.open(tmpCyc);
-				//						if (tmpFile)
-				//						{
-				//							SendCyclogrammName(tmpCyc, 2);
-				//							CurrentCyclogramm = tmpCyc;
-				//						}
-				//					}
-				////					if (CyclogrammForRecieve != "")
-				////					{
-				////						CyclogrammForRecieve += ".cyc";
-				////					}				
-				//					if (ResponseSendCyclogramm == 5)
-				//					{
-				//						SendCyclogrammName(CurrentCyclogramm, 2);
-				//					}
-				//					//Serial.println(CyclogrammForRecieve);
-				//					//SendPackage(10);
-				//					result = 9;
-				//				}
-				//				break;
 			case 12:
 				Serial.print("Package 12 recieved, "); Serial.print("Client: ");
 				ContentLength = (Udp.read() << 8) + (Udp.read());
@@ -523,27 +414,6 @@ byte ParsePackage() {
 					result = 7;
 				}
 				break;
-				//case 13:
-				//	ContentLength = (Udp.read() << 8) + (Udp.read());
-				//	PlateNumber = Udp.read();
-				//	if (PlateNumber == SovaSet.PlateNumber)
-				//	{
-				//		FinalCyclogramm = "";
-				//		for (size_t i = 0; i < ContentLength - 1; i++)
-				//		{
-				//			FinalCyclogramm += char(Udp.read());
-				//		}
-				//		FinalCyclogramm += ".cyc";
-				//		Serial.print("Final cyclogramm "); Serial.println(FinalCyclogramm);
-				//		File Finalcycfile = SD.open(FinalCyclogramm);
-				//		if (Finalcycfile)
-				//		{
-				//			FinalCyclogrammSave();
-				//			SendPackage(14);
-				//		}
-				//		result = 13;
-					//}
-					//break;
 			default:
 				break;
 			}
@@ -551,5 +421,3 @@ byte ParsePackage() {
 	}
 	return result;
 }
-
-
