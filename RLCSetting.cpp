@@ -1,72 +1,8 @@
-﻿#pragma once
-#include <SD.h>
-
-struct ClientPin
-{
-	byte Number;
-	uint16 LedCount;
-};
-
-class SovaSettingLocal
-{
-public:
-	void ReadSetting(File SettingFile);
-	String  SSID;
-	String  Password;
-	byte PlateNumber;
-	unsigned long ProjectKey;
-	unsigned int UDPPackageSize;
-	unsigned int UDPPort;
-	byte RefreshInterval;
-	unsigned int LEDCount;
-	byte ChannelCount;
-	ClientPin* Pins;
-	byte PinsCount;
-
-	SovaSettingLocal()
-	{
-	}
-
-	virtual ~SovaSettingLocal()
-	{
-	}
-
-private:
-	void SaveSetting(String name, String value);
-};
+#include "RLCSetting.h"
 
 
 
-void SovaSettingLocal::ReadSetting(File SettingFile)
-{
-	String Buffer = "";
-	String BName = "";
-	String BValue = "";
-	byte c;
-	while (SettingFile.available()) {
-		c = SettingFile.read();
-		switch (c)
-		{
-		case 61:
-			BName = Buffer;
-			Buffer = "";
-			break;
-		case 59:
-			BValue = Buffer;
-			Buffer = "";
-			SaveSetting(BName, BValue);
-			break;
-		case 10:
-			break;
-		case 13:
-			break;
-		default:
-			Buffer += char(c);
-		}
-	}
-}
-
-void SovaSettingLocal::SaveSetting(String name, String value)
+void RLCSetting::SaveSetting(String name, String value)
 {
 	if (name == "SSID")
 	{
@@ -84,7 +20,7 @@ void SovaSettingLocal::SaveSetting(String name, String value)
 		return;
 	}
 	if (name == "ProjectKey")
-	{		
+	{
 		ProjectKey = strtoul(value.c_str(), NULL, 10);
 		return;
 	}
@@ -114,8 +50,8 @@ void SovaSettingLocal::SaveSetting(String name, String value)
 		return;
 	}
 	if (name == "Pins")
-	{	
-		Serial.println("DEBUG:");		
+	{
+		Serial.println("DEBUG:");
 		String source = value + ',';
 		Serial.println(source);
 		int Count = 0;
@@ -159,12 +95,49 @@ void SovaSettingLocal::SaveSetting(String name, String value)
 				LEDCountBuffer = "";
 				PinIndex += 1;
 			}
-						
+
 		}
 		Serial.println("DEBUG END!");
-		
+
 		//ChannelCount = atoi(value.c_str());
 		return;
 	}
 }
 
+void RLCSetting::ReadSetting(File SettingFile)
+{
+	String Buffer = "";
+	String BName = "";
+	String BValue = "";
+	byte c;
+	while (SettingFile.available()) {
+		c = SettingFile.read();
+		switch (c)
+		{
+		case 61:
+			BName = Buffer;
+			Buffer = "";
+			break;
+		case 59:
+			BValue = Buffer;
+			Buffer = "";
+			SaveSetting(BName, BValue);
+			break;
+		case 10:
+			break;
+		case 13:
+			break;
+		default:
+			Buffer += char(c);
+		}
+	}
+}
+
+RLCSetting::RLCSetting()
+{
+}
+
+
+RLCSetting::~RLCSetting()
+{
+}

@@ -1,21 +1,24 @@
-﻿#include <SD.h>
+﻿
+#include <SD.h>
 #include <Hash.h>
 #include <EEPROM.h>
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 #include "FastLED.h"
-#include "SovaSettingLocal.h"
+#include "RLCSetting.h"
+#include "RLCMessageParser.h"
 
 #define chipSelect 15
 
 CRGB *LedArray;
 File FileCyclogram;
 File SettingFile;
-SovaSettingLocal SovaSet;
+RLCSetting SovaSet;
 WiFiUDP Udp;
 IPAddress ServerIP;
 String Cyclogramm = "Data.cyc";
 byte ClientState;
+RLCMessageParser MessageParser;
 
 uint32 CurrentTime = 0; // Момент времени с которого запуститься циклограмма
 unsigned long MainLoopTime1, MainLoopTime2;  // Для подсчета временного интервала работы программы на главном цикле для отправки пакета с номером клиента на сервер с задержкой
@@ -40,7 +43,6 @@ LabelRestartSD:  // Старт/рестарт инициализации SD ка
 	else {
 		Serial.println(" successful!");
 	}
-
 	SettingFile = SD.open("set.txt", FILE_READ);
 	SovaSet.ReadSetting(SettingFile);
 	Serial.println();
@@ -74,6 +76,7 @@ LabelRestartSD:  // Старт/рестарт инициализации SD ка
 	Serial.print("----------------------------");
 	Serial.println();
 
+	MessageParser = RLCMessageParser(&SovaSet, &CurrentTime, &ServerIP, &Udp);
 	// Подключение к WiFi с переподключением
 	//WiFiConnect();
 	WiFiNewConnectLoop();
@@ -84,7 +87,8 @@ LabelRestartSD:  // Старт/рестарт инициализации SD ка
 		Serial.println("Wait serverIP");
 		SendPackageBroadcast(8);
 		delay(100);
-		ParsePackage();
+		PackageParseResult = MessageParser.Parse();
+		if (PackageParseResult > 0) { Serial.print("PackageResult: "); Serial.println(PackageParseResult); }
 	}
 	FastLED.clear(true);
 	MainLoopTime1 = millis();
@@ -102,7 +106,8 @@ LabelStop:
 	}
 	else if ((MainLoopTime2 - MainLoopTime1) > 10)
 	{
-		PackageParseResult = ParsePackage();
+		PackageParseResult = MessageParser.Parse();
+		if (PackageParseResult > 0) { Serial.print("PackageResult: "); Serial.println(PackageParseResult); }
 		if (PackageParseResult == 1 || PackageParseResult == 7) {
 		LabelStart:
 			FileCyclogram = SD.open(Cyclogramm);
@@ -134,7 +139,8 @@ LabelStop:
 						{
 							ClientState = 2;
 							SendPackage(3);
-							PackageParseResult = ParsePackage();
+							PackageParseResult = MessageParser.Parse();
+							if (PackageParseResult > 0) { Serial.print("PackageResult: "); Serial.println(PackageParseResult); }
 							switch (PackageParseResult) {
 							case 1:
 								goto label1;
@@ -155,7 +161,7 @@ LabelStop:
 								ClientState = 3;
 								SendPackage(3);
 								PauseTime1 = millis();
-								PackageParseResult = ParsePackage();
+								PackageParseResult = MessageParser.Parse();
 								switch (PackageParseResult)
 								{
 								case 1:
