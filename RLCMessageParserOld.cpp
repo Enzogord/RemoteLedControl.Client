@@ -1,13 +1,13 @@
-#include "RLCMessageParser.h"
+#include "RLCMessageParserOld.h"
 #include "HardwareSerial.h"
 
 
 
-RLCMessageParser::RLCMessageParser()
+RLCMessageParserOld::RLCMessageParserOld()
 {
 }
 
-RLCMessageParser::RLCMessageParser(RLCSetting* settings_ptr, uint32* currenctTime_ptr, IPAddress* serverIP_ptr, WiFiUDP* udp_ptr)
+RLCMessageParserOld::RLCMessageParserOld(RLCSetting* settings_ptr, uint32* currenctTime_ptr, IPAddress* serverIP_ptr, WiFiUDP* udp_ptr)
 {
 	Setting_ptr = settings_ptr;
 	CurrenctTime_ptr = currenctTime_ptr;
@@ -16,11 +16,11 @@ RLCMessageParser::RLCMessageParser(RLCSetting* settings_ptr, uint32* currenctTim
 }
 
 
-RLCMessageParser::~RLCMessageParser()
+RLCMessageParserOld::~RLCMessageParserOld()
 {
 }
 
-byte RLCMessageParser::Parse()
+byte RLCMessageParserOld::Parse()
 {
 	byte result = 0;
 	byte ptype;
@@ -31,6 +31,11 @@ byte RLCMessageParser::Parse()
 	unsigned int ContentLength;
 	unsigned int psize = (*Udp_ptr).parsePacket();
 	if (psize == (*Setting_ptr).UDPPackageSize) {
+		byte sourceType = (*Udp_ptr).read();
+		if (sourceType != 0)
+		{
+			return 0;
+		}
 		unsigned long Key = ((*Udp_ptr).read() << 24) + ((*Udp_ptr).read() << 16) + ((*Udp_ptr).read() << 8) + ((*Udp_ptr).read());
 		if (Key == (*Setting_ptr).ProjectKey)
 		{

@@ -13,6 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Header Files\RLCMessage">
+      <UniqueIdentifier>{fa62ef90-3187-48d9-84ef-65b2eda421f4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\RLCMessage">
+      <UniqueIdentifier>{3bc555bb-5a8b-47c2-9332-37cf9ee480e0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="Sova.ino" />
@@ -24,19 +30,40 @@
     <ClInclude Include="__vm\.RemoteLEDControlClient.vsarduino.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="RLCMessageParser.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="RLCSetting.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="RLCMessageParserOld.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RLCMessage\RLCEnums.h">
+      <Filter>Header Files\RLCMessage</Filter>
+    </ClInclude>
+    <ClInclude Include="RLCMessage\RLCMessage.h">
+      <Filter>Header Files\RLCMessage</Filter>
+    </ClInclude>
+    <ClInclude Include="RLCMessage\RLCMessageParser.h">
+      <Filter>Header Files\RLCMessage</Filter>
+    </ClInclude>
+    <ClInclude Include="RLCMessage\RLCMessageFactory.h">
+      <Filter>Header Files\RLCMessage</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="RLCMessageParser.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="RLCSetting.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RLCMessageParserOld.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RLCMessage\RLCMessage.cpp">
+      <Filter>Source Files\RLCMessage</Filter>
+    </ClCompile>
+    <ClCompile Include="RLCMessage\RLCMessageParser.cpp">
+      <Filter>Source Files\RLCMessage</Filter>
+    </ClCompile>
+    <ClCompile Include="RLCMessage\RLCMessageFactory.cpp">
+      <Filter>Source Files\RLCMessage</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

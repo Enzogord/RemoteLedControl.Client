@@ -15,7 +15,7 @@ public:
 	void ReadSetting(File SettingFile);
 	String  SSID;
 	String  Password;
-	byte PlateNumber;
+	unsigned short PlateNumber;
 	unsigned long ProjectKey;
 	unsigned int UDPPackageSize;
 	unsigned int UDPPort;

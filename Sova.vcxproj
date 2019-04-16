@@ -83,13 +83,20 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="RLCMessageParser.h" />
+    <ClInclude Include="RLCMessageParserOld.h" />
+    <ClInclude Include="RLCMessage\RLCEnums.h" />
+    <ClInclude Include="RLCMessage\RLCMessage.h" />
+    <ClInclude Include="RLCMessage\RLCMessageFactory.h" />
+    <ClInclude Include="RLCMessage\RLCMessageParser.h" />
     <ClInclude Include="RLCSetting.h" />
     <ClInclude Include="__vm\.RemoteLEDControlClient.vsarduino.h" />
     <ClInclude Include="__vm\.Sova.vsarduino.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="RLCMessageParser.cpp" />
+    <ClCompile Include="RLCMessageParserOld.cpp" />
+    <ClCompile Include="RLCMessage\RLCMessage.cpp" />
+    <ClCompile Include="RLCMessage\RLCMessageFactory.cpp" />
+    <ClCompile Include="RLCMessage\RLCMessageParser.cpp" />
     <ClCompile Include="RLCSetting.cpp" />
   </ItemGroup>
   <PropertyGroup>
@@ -100,7 +107,7 @@
   </ImportGroup>
   <ProjectExtensions>
     <VisualStudio>
-      <UserProperties arduino.upload.port="COM4" debug.view.DigitalPins="" />
+      <UserProperties debug.view.FreeMemory="" arduino.upload.port="COM4" debug.view.DigitalPins="" />
     </VisualStudio>
   </ProjectExtensions>
 </Project>

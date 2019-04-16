@@ -98,8 +98,6 @@ void RLCSetting::SaveSetting(String name, String value)
 
 		}
 		Serial.println("DEBUG END!");
-
-		//ChannelCount = atoi(value.c_str());
 		return;
 	}
 }

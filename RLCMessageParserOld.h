@@ -3,7 +3,7 @@
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 
-class RLCMessageParser
+class RLCMessageParserOld
 {
 private:
 	RLCSetting * Setting_ptr;
@@ -11,9 +11,9 @@ private:
 	IPAddress* ServerIP_ptr;
 	WiFiUDP* Udp_ptr;
 public:
-	RLCMessageParser();
-	RLCMessageParser(RLCSetting* settings, uint32* currenctTime_ptr, IPAddress* serverIP_ptr, WiFiUDP* udp_ptr);
-	~RLCMessageParser();
+	RLCMessageParserOld();
+	RLCMessageParserOld(RLCSetting* settings, uint32* currenctTime_ptr, IPAddress* serverIP_ptr, WiFiUDP* udp_ptr);
+	~RLCMessageParserOld();
 	byte Parse();
 };
 
