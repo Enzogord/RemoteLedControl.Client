@@ -89,6 +89,8 @@
     <ClInclude Include="RLCMessage\RLCMessageFactory.h" />
     <ClInclude Include="RLCMessage\RLCMessageParser.h" />
     <ClInclude Include="RLCSetting.h" />
+    <ClInclude Include="TimeSynchronization\SyncTime.h" />
+    <ClInclude Include="TimeSynchronization\Time.h" />
     <ClInclude Include="__vm\.RemoteLEDControlClient.vsarduino.h" />
     <ClInclude Include="__vm\.Sova.vsarduino.h" />
   </ItemGroup>
@@ -98,6 +100,8 @@
     <ClCompile Include="RLCMessage\RLCMessageFactory.cpp" />
     <ClCompile Include="RLCMessage\RLCMessageParser.cpp" />
     <ClCompile Include="RLCSetting.cpp" />
+    <ClCompile Include="TimeSynchronization\SyncTime.cpp" />
+    <ClCompile Include="TimeSynchronization\Time.cpp" />
   </ItemGroup>
   <PropertyGroup>
     <DebuggerFlavor>VisualMicroDebugger</DebuggerFlavor>

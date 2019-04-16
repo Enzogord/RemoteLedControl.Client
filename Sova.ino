@@ -11,11 +11,12 @@
 #include "RLCMessage/RLCMessageParser.h"
 #include "RLCMessage/RLCEnums.h"
 #include "RLCMessage/RLCMessageFactory.h"
+#include "TimeSynchronization/SyncTime.h"
 
 #define chipSelect 15
 //таймаут ожидания при запросе по мультикасту
 #define SERVER_IP_TIMEOUT 2000UL
-
+#define NTP_PORT 11011
 
 CRGB *ledArray;
 File cyclogrammFile;
@@ -26,6 +27,7 @@ String cyclogrammFileName = "Data.cyc";
 uint8 *rlcMessageBuffer = new uint8[RLC_MESSAGE_LENGTH];
 WiFiClient tcpClient;
 WiFiUDP udp;
+SyncTime syncTime;
 
 ClientStateEnum clientState;
 RLCSetting rlcSettings;
@@ -43,6 +45,8 @@ void Initializations()
 {
 	Serial.begin(115200);
 	clientState = ClientStateEnum::Stoped;
+	syncTime.LastTime = Time(63681897600, 0); //01.01.2019 00:00:00:000000
+
 	// Отключение точки доступа
 	WiFi.softAPdisconnect(true);
 
@@ -96,6 +100,16 @@ void WaitingServerIPAddress()
 		}
 	} while(serverIP == IPAddress(0, 0, 0, 0));
 	Serial.print("Received server IP: "); Serial.println(serverIP);
+}
+
+void WaitingTimeSynchronization(IPAddress &ipAddress, uint16_t port)
+{
+	udp.begin(port);
+	syncTime.Init(udp);
+	while(!syncTime.SynchronizeTime(ipAddress, port))
+	{
+	}
+	udp.stopAll();
 }
 
 void ConnectToRLCServer(IPAddress &ipAddress, uint16_t port)
@@ -200,20 +214,21 @@ void setup()
 	Serial.println();
 
 	messageFactory = RLCMessageFactory(rlcSettings.ProjectKey, rlcSettings.PlateNumber);
-	//	messageParser = RLCMessageParserOld(&rlcSettings, &CurrentTime, &serverIP, &udp);
+	//	messageParser = RLCMessageParserOld(&rlcSettings, &CurrentTime, &serverIP, &udp);	
 	
-	// Подключение к WiFi с переподключением
 	WiFiConnect();
 	WaitingServerIPAddress();
+	WaitingTimeSynchronization(serverIP, NTP_PORT);
 	ConnectToRLCServer(serverIP, rlcSettings.UDPPort);
-	Serial.println("After trying tcp connection");
+
 	FastLED.clear(true);
-	//MainLoopTime1 = millis();
 }
 
 void loop(void) {
 	ReadTCPConnection();
 
+	Time currentTime = syncTime.Now();
+	Serial.print("Current time: "); Serial.print(currentTime.Seconds); Serial.print(" sec, "); Serial.print(currentTime.Microseconds); Serial.println(" mcs");
 
 
 	/*

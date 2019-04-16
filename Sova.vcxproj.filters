@@ -19,6 +19,18 @@
     <Filter Include="Source Files\RLCMessage">
       <UniqueIdentifier>{3bc555bb-5a8b-47c2-9332-37cf9ee480e0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\TimeSynchronization">
+      <UniqueIdentifier>{605b32ce-ed3b-48cd-8b3f-a720727e1546}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\TimeSynchronization">
+      <UniqueIdentifier>{3b76151c-d619-4055-bf56-8e0591e6742e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\LEDController">
+      <UniqueIdentifier>{4339655c-3be4-4b29-b288-ca6ca81ece36}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\LEDController">
+      <UniqueIdentifier>{613e2e00-62e4-4b06-a2dc-645b5fd3b30b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="Sova.ino" />
@@ -48,6 +60,12 @@
     <ClInclude Include="RLCMessage\RLCMessageFactory.h">
       <Filter>Header Files\RLCMessage</Filter>
     </ClInclude>
+    <ClInclude Include="TimeSynchronization\SyncTime.h">
+      <Filter>Header Files\TimeSynchronization</Filter>
+    </ClInclude>
+    <ClInclude Include="TimeSynchronization\Time.h">
+      <Filter>Header Files\TimeSynchronization</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RLCSetting.cpp">
@@ -64,6 +82,12 @@
     </ClCompile>
     <ClCompile Include="RLCMessage\RLCMessageFactory.cpp">
       <Filter>Source Files\RLCMessage</Filter>
+    </ClCompile>
+    <ClCompile Include="TimeSynchronization\SyncTime.cpp">
+      <Filter>Source Files\TimeSynchronization</Filter>
+    </ClCompile>
+    <ClCompile Include="TimeSynchronization\Time.cpp">
+      <Filter>Source Files\TimeSynchronization</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
