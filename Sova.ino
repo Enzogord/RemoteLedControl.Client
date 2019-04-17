@@ -17,6 +17,8 @@
 //таймаут ожидания при запросе по мультикасту
 #define SERVER_IP_TIMEOUT 2000UL
 #define NTP_PORT 11011
+//таймаут ожидания успешного соединения в рабочем цикле, мс
+#define TCP_CONNECTION_TIMEOUT_ON_WORK 10
 
 CRGB *ledArray;
 File cyclogrammFile;
@@ -28,11 +30,12 @@ uint8 *rlcMessageBuffer = new uint8[RLC_MESSAGE_LENGTH];
 WiFiClient tcpClient;
 WiFiUDP udp;
 SyncTime syncTime;
-
+unsigned long lastTryingConnectionTime;
 ClientStateEnum clientState;
 RLCSetting rlcSettings;
 RLCMessageParser messageParser;
 RLCMessageFactory messageFactory;
+boolean connectionInProgress = false;
 
 uint32 CurrentTime = 0; // Момент времени с которого запуститься циклограмма
 unsigned long MainLoopTime1, MainLoopTime2;  // Для подсчета временного интервала работы программы на главном цикле для отправки пакета с номером клиента на сервер с задержкой
@@ -87,6 +90,7 @@ void WaitingServerIPAddress()
 			if(udp.available()) {
 				memset(rlcMessageBuffer, 0, RLC_MESSAGE_LENGTH);
 				udp.readBytes(rlcMessageBuffer, RLC_MESSAGE_LENGTH);
+				Serial.print("Received server IP packet: "); Serial.println(rlcMessageBuffer[5]);
 				RLCMessage response = messageParser.Parse(rlcMessageBuffer);
 				if(response.IsInitialized && response.MessageType == MessageTypeEnum::SendServerIP && response.IP != IPAddress(0, 0, 0, 0)) {
 					serverIP = response.IP;
@@ -112,34 +116,65 @@ void WaitingTimeSynchronization(IPAddress &ipAddress, uint16_t port)
 	udp.stopAll();
 }
 
-void ConnectToRLCServer(IPAddress &ipAddress, uint16_t port)
+//ожидание успешного TCP соеднинения
+void WaitingConnectToRLCServer(IPAddress &ipAddress, uint16_t port)
 {
-	unsigned long onStartMillis = millis();
-	Serial.print("Trying connect to "); Serial.print(ipAddress); Serial.print(":"); Serial.println(port);
-	//пересоздаем клиент, потому что при разрыве связи не может заного подключиться
-	tcpClient = WiFiClient();
-	Serial.print("Connecting");
+	Serial.print("Waiting connect to "); Serial.print(ipAddress); Serial.print(":"); Serial.println(port);
 	FastLED.showColor(CRGB::BlueViolet, 100);
-	int tcpConnected = -1;
-	tcpConnected = tcpClient.connect(ipAddress, port);
+	unsigned long connectionTimePoint = millis();
+
+	int tcpConnected = 0;
 	while(!tcpConnected)
-	{		
-		if((millis() - onStartMillis) >= 500)
+	{
+		if((millis() - connectionTimePoint) >= 1000)
 		{
-			onStartMillis = millis();
-			tcpConnected = tcpClient.connect(ipAddress, port);
-			Serial.print(".");
+			tcpConnected = TryConnectToRLCServer(ipAddress, port, 1000UL);
 		}
 	}
+	
 	FastLED.clear(true);
-	Serial.println(" Connected.");
-	tcpClient.setTimeout(0);
-	tcpClient.keepAlive(2, 1);
-	//tcpClient.write("Starter message");
 }
+
+//попытка однократного TCP соединения 
+int TryConnectToRLCServer(IPAddress &ipAddress, uint16_t port, unsigned long timeout)
+{
+	int tcpConnected = 0;
+	//пересоздаем клиент, потому что при разрыве связи не может заного подключиться
+	tcpClient = WiFiClient();
+	Serial.println("Connecting to TCP server");
+	Serial.print("Current connection: "); Serial.println(tcpClient.connected());
+	Serial.print("Current status: "); Serial.println(tcpClient.status());
+	tcpClient.setTimeout(timeout);
+
+	tcpConnected = tcpClient.connect(ipAddress, port);
+	
+	if(tcpConnected)
+	{
+		lastTryingConnectionTime = millis();
+		tcpClient.setTimeout(0);
+		tcpClient.keepAlive(2, 1);
+		Serial.println(" Connected.");
+	}
+	return tcpConnected;
+}
+
 
 void ReadTCPConnection() 
 {
+	if(tcpClient.connected()) {
+		connectionInProgress = false;
+	}
+
+	if(!tcpClient.connected() && !connectionInProgress)
+	{
+		Serial.print("Disconnected. Try reconnect");
+		//Serial.print("Tcp status: "); Serial.println(tcpClient.status());
+		TryConnectToRLCServer(serverIP, rlcSettings.UDPPort, TCP_CONNECTION_TIMEOUT_ON_WORK);
+		lastTryingConnectionTime = millis();
+		//не задерживаем главный цикл после попытки подключения, сразу возвращая управление
+		return;
+	}
+
 	uint8_t packetBuffer[1024];
 
 	while (tcpClient.available()) {
@@ -219,19 +254,19 @@ void setup()
 	WiFiConnect();
 	WaitingServerIPAddress();
 	WaitingTimeSynchronization(serverIP, NTP_PORT);
-	ConnectToRLCServer(serverIP, rlcSettings.UDPPort);
+	WaitingConnectToRLCServer(serverIP, rlcSettings.UDPPort);
 
 	FastLED.clear(true);
 }
 
 void loop(void) {
 	ReadTCPConnection();
+	delay(500);
+	/*Time currentTime = syncTime.Now();
+	Serial.print("Current time: "); Serial.print(currentTime.Seconds); Serial.print(" sec, "); Serial.print(currentTime.Microseconds); Serial.println(" mcs");*/
 
-	Time currentTime = syncTime.Now();
-	Serial.print("Current time: "); Serial.print(currentTime.Seconds); Serial.print(" sec, "); Serial.print(currentTime.Microseconds); Serial.println(" mcs");
 
-
-	/*
+/*	
 LabelStop:
 	MainLoopTime2 = millis();
 	if ((MainLoopTime2 - MainLoopTime1) > 50)
@@ -323,7 +358,8 @@ LabelStop:
 				}
 			}
 		}
-	}*/
+	}
+*/
 }
 
 void WiFiConnect() {
