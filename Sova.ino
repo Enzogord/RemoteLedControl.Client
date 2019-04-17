@@ -1,4 +1,5 @@
 ﻿
+#include <Ticker.h>
 #include <SD.h>
 #include <Hash.h>
 #include <EEPROM.h>
@@ -11,6 +12,7 @@
 #include "RLCMessage/RLCMessageParser.h"
 #include "RLCMessage/RLCEnums.h"
 #include "RLCMessage/RLCMessageFactory.h"
+#include "RLCLedController/RLCLedController.h"
 #include "TimeSynchronization/SyncTime.h"
 
 #define chipSelect 15
@@ -20,7 +22,9 @@
 //таймаут ожидания успешного соединения в рабочем цикле, мс
 #define TCP_CONNECTION_TIMEOUT_ON_WORK 10
 
-CRGB *ledArray;
+Ticker ticker;
+
+//CRGB *ledArray;
 File cyclogrammFile;
 File settingFile;
 IPAddress broadcastAddress;
@@ -36,6 +40,7 @@ RLCSetting rlcSettings;
 RLCMessageParser messageParser;
 RLCMessageFactory messageFactory;
 boolean connectionInProgress = false;
+RLCLedController rlcLedController;
 
 uint32 CurrentTime = 0; // Момент времени с которого запуститься циклограмма
 unsigned long MainLoopTime1, MainLoopTime2;  // Для подсчета временного интервала работы программы на главном цикле для отправки пакета с номером клиента на сервер с задержкой
@@ -53,7 +58,7 @@ void Initializations()
 	// Отключение точки доступа
 	WiFi.softAPdisconnect(true);
 
-	InitializeSDCard();
+	InitializeSDCard();	
 }
 
 void InitializeSDCard()
@@ -142,8 +147,8 @@ int TryConnectToRLCServer(IPAddress &ipAddress, uint16_t port, unsigned long tim
 	//пересоздаем клиент, потому что при разрыве связи не может заного подключиться
 	tcpClient = WiFiClient();
 	Serial.println("Connecting to TCP server");
-	Serial.print("Current connection: "); Serial.println(tcpClient.connected());
-	Serial.print("Current status: "); Serial.println(tcpClient.status());
+	//Serial.print("Current connection: "); Serial.println(tcpClient.connected());
+	//Serial.print("Current status: "); Serial.println(tcpClient.status());
 	tcpClient.setTimeout(timeout);
 
 	tcpConnected = tcpClient.connect(ipAddress, port);
@@ -153,11 +158,10 @@ int TryConnectToRLCServer(IPAddress &ipAddress, uint16_t port, unsigned long tim
 		lastTryingConnectionTime = millis();
 		tcpClient.setTimeout(0);
 		tcpClient.keepAlive(2, 1);
-		Serial.println(" Connected.");
+		Serial.println("TCP connected.");
 	}
 	return tcpConnected;
 }
-
 
 void ReadTCPConnection() 
 {
@@ -168,7 +172,6 @@ void ReadTCPConnection()
 	if(!tcpClient.connected() && !connectionInProgress)
 	{
 		Serial.print("Disconnected. Try reconnect");
-		//Serial.print("Tcp status: "); Serial.println(tcpClient.status());
 		TryConnectToRLCServer(serverIP, rlcSettings.UDPPort, TCP_CONNECTION_TIMEOUT_ON_WORK);
 		lastTryingConnectionTime = millis();
 		//не задерживаем главный цикл после попытки подключения, сразу возвращая управление
@@ -194,20 +197,35 @@ void OnReceiveMessage(RLCMessage &message)
 	{
 	case MessageTypeEnum::Play:
 		Serial.println("Receive Play message");
+		rlcLedController.Play();
 		break;
 	case MessageTypeEnum::Pause:
 		Serial.println("Receive Pause message");
+		rlcLedController.Pause();
 		break;
 	case MessageTypeEnum::Stop:
 		Serial.println("Receive Stop message");
+		rlcLedController.Stop();
 		break;
 	case MessageTypeEnum::PlayFrom:
 		Serial.println("Receive PlayFrom message");
+		rlcLedController.SetPosition(message.TimeFrame);
+		rlcLedController.Play();
 		break;
 	case MessageTypeEnum::NotSet:
 	default:
 		break;
 	}
+}
+
+void OpenCyclogrammFile()
+{
+	cyclogrammFile = SD.open(cyclogrammFileName);
+}
+
+void NextFrameHandler()
+{
+	rlcLedController.NextFrame();
 }
 
 void setup()
@@ -244,12 +262,13 @@ void setup()
 		Serial.println(rlcSettings.Pins[i].LedCount);
 	}
 
-	FastLEDInitialization();
+	OpenCyclogrammFile();
+	rlcLedController.Initialize(FastLEDInitialization, cyclogrammFile, OpenCyclogrammFile);
+
 	Serial.print("----------------------------");
 	Serial.println();
 
 	messageFactory = RLCMessageFactory(rlcSettings.ProjectKey, rlcSettings.PlateNumber);
-	//	messageParser = RLCMessageParserOld(&rlcSettings, &CurrentTime, &serverIP, &udp);	
 	
 	WiFiConnect();
 	WaitingServerIPAddress();
@@ -257,11 +276,13 @@ void setup()
 	WaitingConnectToRLCServer(serverIP, rlcSettings.UDPPort);
 
 	FastLED.clear(true);
+	ticker.attach_ms(rlcLedController.FrameTime, NextFrameHandler);
 }
 
 void loop(void) {
-	ReadTCPConnection();
-	delay(500);
+	ReadTCPConnection();	
+	rlcLedController.Show();
+
 	/*Time currentTime = syncTime.Now();
 	Serial.print("Current time: "); Serial.print(currentTime.Seconds); Serial.print(" sec, "); Serial.print(currentTime.Microseconds); Serial.println(" mcs");*/
 
@@ -385,8 +406,9 @@ void WiFiConnect() {
 	Serial.print("Local IP: "); Serial.println(WiFi.localIP());
 }
 
-void FastLEDInitialization() {
-	ledArray = new CRGB[rlcSettings.LEDCount];
+void FastLEDInitialization(CRGB* ledArray, unsigned int &ledCount) {
+	ledCount = rlcSettings.LEDCount;
+	ledArray = new CRGB[ledCount];
 	int startLED = 0;
 	for (size_t i = 0; i < rlcSettings.PinsCount; i++)
 	{

@@ -25,10 +25,10 @@
     <Filter Include="Source Files\TimeSynchronization">
       <UniqueIdentifier>{3b76151c-d619-4055-bf56-8e0591e6742e}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\LEDController">
+    <Filter Include="Header Files\RLCLedController">
       <UniqueIdentifier>{4339655c-3be4-4b29-b288-ca6ca81ece36}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\LEDController">
+    <Filter Include="Source Files\RLCLedController">
       <UniqueIdentifier>{613e2e00-62e4-4b06-a2dc-645b5fd3b30b}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -66,6 +66,9 @@
     <ClInclude Include="TimeSynchronization\Time.h">
       <Filter>Header Files\TimeSynchronization</Filter>
     </ClInclude>
+    <ClInclude Include="RLCLedController\RLCLedController.h">
+      <Filter>Header Files\RLCLedController</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RLCSetting.cpp">
@@ -88,6 +91,9 @@
     </ClCompile>
     <ClCompile Include="TimeSynchronization\Time.cpp">
       <Filter>Source Files\TimeSynchronization</Filter>
+    </ClCompile>
+    <ClCompile Include="RLCLedController\RLCLedController.cpp">
+      <Filter>Source Files\RLCLedController</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
