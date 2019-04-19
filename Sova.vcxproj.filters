@@ -45,9 +45,6 @@
     <ClInclude Include="RLCSetting.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="RLCMessageParserOld.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="RLCMessage\RLCEnums.h">
       <Filter>Header Files\RLCMessage</Filter>
     </ClInclude>
@@ -72,9 +69,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RLCSetting.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="RLCMessageParserOld.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="RLCMessage\RLCMessage.cpp">

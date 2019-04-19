@@ -1,8 +1,24 @@
 #pragma once
 #include <SD.h>
 
+enum class PinType {
+	SPI,
+	PWM
+};
+
+inline const char* ToString(PinType pinType)
+{
+	switch(pinType)
+	{
+	case PinType::SPI:   return "SPI";
+	case PinType::PWM:   return "PWM";
+	default:      return "NotSet";
+	}
+}
+
 struct ClientPin
 {
+	PinType Type;
 	byte Number;
 	uint16 LedCount;
 };
@@ -20,7 +36,8 @@ public:
 	unsigned int UDPPackageSize;
 	unsigned int UDPPort;
 	byte RefreshInterval;
-	unsigned int LEDCount;
+	unsigned int SPILedCount;
+	unsigned int PWMChannelCount;
 	byte ChannelCount;
 	ClientPin* Pins;
 	byte PinsCount;

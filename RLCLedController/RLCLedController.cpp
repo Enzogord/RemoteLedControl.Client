@@ -1,5 +1,7 @@
 #include "RLCLedController.h"
 
+#define ANALOG_HIGH 255
+
 RLCLedController::RLCLedController()
 {
 	IsInitialized = false;
@@ -13,8 +15,11 @@ RLCLedController::~RLCLedController()
 void RLCLedController::Initialize(FastLedInitialization initializerMethod, File &cyclogrammFile, ReopenFile reopenFileMethod)
 {
 	RLCLedController::reopenFileMethod = reopenFileMethod;
-	initializerMethod(ledArray, ledCount);
-	frameBytes = ledCount * 3;
+	RLCLedController::cyclogrammFile = cyclogrammFile;
+	//CRGB leds;
+	initializerMethod();
+	//ledArray = &leds;
+	frameBytes = LedCount * 3;
 	IsInitialized = true;
 }
 
@@ -24,7 +29,7 @@ void RLCLedController::Play()
 	{
 		return;
 	}
-	Status == LEDControllerStatuses::Played;
+	Status = LEDControllerStatuses::Played;
 	Serial.println("LED controller start play.");
 }
 
@@ -34,11 +39,12 @@ void RLCLedController::Stop()
 	{
 		return;
 	}
+	FastLED.clear(true);
 	//—брос счетчиков и позиций в начальные положени€
 	cyclogrammFile.seek(0);
 	framePosition = 0;
 
-	Status == LEDControllerStatuses::Stoped;
+	Status = LEDControllerStatuses::Stoped;
 	Serial.println("LED controller stoped.");
 }
 
@@ -48,7 +54,7 @@ void RLCLedController::Pause()
 	{
 		return;
 	}
-	Status == LEDControllerStatuses::Paused;
+	Status = LEDControllerStatuses::Paused;
 	Serial.println("LED controller paused.");
 }
 
@@ -70,11 +76,20 @@ void RLCLedController::Show()
 	{
 		if(cyclogrammFile.available() >= frameBytes)
 		{
-			for(unsigned int i = 0; i < ledCount; i++)
+			unsigned long a1 = millis();
+			for(unsigned int i = 0; i < LedCount; i++)
+			{				
+				LedArray[i].r = cyclogrammFile.read();
+				LedArray[i].g = cyclogrammFile.read();
+				LedArray[i].b = cyclogrammFile.read();
+			}
+
+			Serial.print("Frame generation time: "); Serial.println(millis() - a1);
+			for(unsigned int i = 0; i < PWMChannelCount; i++)
 			{
-				ledArray[i].r = cyclogrammFile.read();
-				ledArray[i].g = cyclogrammFile.read();
-				ledArray[i].b = cyclogrammFile.read();
+				int pwmOutput = cyclogrammFile.read() + 1000;
+				Serial.print("PWM output: "); Serial.println(pwmOutput);
+				analogWrite(PWMChannels[i], pwmOutput);
 			}
 			FastLED.show();
 		}
@@ -95,14 +110,16 @@ void RLCLedController::NextFrame()
 	{
 		return;
 	}
+	Serial.print("Status: "); Serial.println(ToString(Status));
 	if(Status == LEDControllerStatuses::Played)
 	{
 		if(showNext)
 		{
 			Serial.println("!!!!!!!!! FATAL ERROR. FRAME OVERLAY !!!!!!!!!!!");
 		}
+		Serial.println("New frame");
 		showNext = true;
-		framePosition += ledCount * 3;
+		framePosition += frameBytes;
 	}
 }
 

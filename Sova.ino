@@ -97,9 +97,19 @@ void WaitingServerIPAddress()
 				udp.readBytes(rlcMessageBuffer, RLC_MESSAGE_LENGTH);
 				Serial.print("Received server IP packet: "); Serial.println(rlcMessageBuffer[5]);
 				RLCMessage response = messageParser.Parse(rlcMessageBuffer);
-				if(response.IsInitialized && response.MessageType == MessageTypeEnum::SendServerIP && response.IP != IPAddress(0, 0, 0, 0)) {
-					serverIP = response.IP;
+				if(!response.IsInitialized) {
+					Serial.println("Response not initialized");
+					break;
 				}
+				if(response.MessageType != MessageTypeEnum::SendServerIP) {
+					Serial.println("Message type not SendServerIP");
+					break;
+				}
+				if(response.IP == IPAddress(0, 0, 0, 0)) {
+					Serial.println("Server IP is empty");
+					break;
+				}
+				serverIP = response.IP;
 			}
 		}
 		udp.stopAll();
@@ -220,7 +230,11 @@ void OnReceiveMessage(RLCMessage &message)
 
 void OpenCyclogrammFile()
 {
-	cyclogrammFile = SD.open(cyclogrammFileName);
+	if(!cyclogrammFile) {
+		cyclogrammFile = SD.open(cyclogrammFileName);
+		Serial.print("Cyclogramm opened: "); Serial.println(cyclogrammFile.name());
+		Serial.print("Cyclogramm data available: "); Serial.println(cyclogrammFile.available());
+	}
 }
 
 void NextFrameHandler()
@@ -251,12 +265,13 @@ void setup()
 	Serial.print("UDPPort: ");
 	Serial.println(rlcSettings.UDPPort);
 	Serial.print("LEDCount: ");
-	Serial.println(rlcSettings.LEDCount);
+	Serial.println(rlcSettings.SPILedCount);
 	Serial.print("Pins count: ");
 	Serial.println(rlcSettings.PinsCount);
 	for (size_t i = 0; i < rlcSettings.PinsCount; i++)
 	{
 		Serial.print("Pin: ");
+		Serial.print(ToString(rlcSettings.Pins[i].Type));
 		Serial.print(rlcSettings.Pins[i].Number);
 		Serial.print("-");
 		Serial.println(rlcSettings.Pins[i].LedCount);
@@ -274,113 +289,17 @@ void setup()
 	WaitingServerIPAddress();
 	WaitingTimeSynchronization(serverIP, NTP_PORT);
 	WaitingConnectToRLCServer(serverIP, rlcSettings.UDPPort);
-
+	
 	FastLED.clear(true);
+	
 	ticker.attach_ms(rlcLedController.FrameTime, NextFrameHandler);
 }
 
 void loop(void) {
 	ReadTCPConnection();	
 	rlcLedController.Show();
-
 	/*Time currentTime = syncTime.Now();
 	Serial.print("Current time: "); Serial.print(currentTime.Seconds); Serial.print(" sec, "); Serial.print(currentTime.Microseconds); Serial.println(" mcs");*/
-
-
-/*	
-LabelStop:
-	MainLoopTime2 = millis();
-	if ((MainLoopTime2 - MainLoopTime1) > 50)
-	{
-		clientState = 1;
-		SendPackage(3);
-		FastLED.clear(true);
-		MainLoopTime1 = millis();
-	}
-	else if ((MainLoopTime2 - MainLoopTime1) > 10)
-	{
-		PackageParseResult = messageParser.Parse();
-		if (PackageParseResult > 0) { Serial.print("PackageResult: "); Serial.println(PackageParseResult); }
-		if (PackageParseResult == 1 || PackageParseResult == 7) {
-		LabelStart:
-			cyclogrammFile = SD.open(cyclogrammFileName);
-			if (cyclogrammFile) {
-				Serial.print("Current cyclogramm: "); Serial.println(cyclogrammFileName);
-				ColorIndex = 0;
-				LedTime1 = millis();
-			labelSetTime:
-				if (CurrentTime > 0)
-				{
-					cyclogrammFile.seek(CurrentTime);
-					CurrentTime = 0;
-				}
-				while (cyclogrammFile.available()) {
-					ledArray[ColorIndex].r = cyclogrammFile.read();
-					ledArray[ColorIndex].g = cyclogrammFile.read();
-					ledArray[ColorIndex].b = cyclogrammFile.read();
-					if (ColorIndex == rlcSettings.LEDCount - 1) {
-						FastLED.show();
-					label1:
-						LedTime2 = millis();
-						if ((LedTime2 - LedTime1) >= rlcSettings.RefreshInterval)
-						{
-							ColorIndex = 0;
-							LedTime1 = millis();
-							continue;
-						}
-						else
-						{
-							clientState = 2;
-							SendPackage(3);
-							PackageParseResult = messageParser.Parse();
-							if (PackageParseResult > 0) { Serial.print("PackageResult: "); Serial.println(PackageParseResult); }
-							switch (PackageParseResult) {
-							case 1:
-								goto label1;
-							case 2:
-								goto LabelStop;
-							case 6:
-								PauseTime1 = millis();
-								goto labelPause;
-							case 7:
-								goto labelSetTime;
-							default:
-								goto label1;
-							}
-						labelPause:
-							PauseTime2 = millis();
-							if ((PauseTime2 - PauseTime1) >= 50)
-							{
-								clientState = 3;
-								SendPackage(3);
-								PauseTime1 = millis();
-								PackageParseResult = messageParser.Parse();
-								switch (PackageParseResult)
-								{
-								case 1:
-									goto label1;
-								case 2:
-									goto LabelStop;
-								case 6:
-									goto labelPause;
-								case 7:
-									goto labelSetTime;
-								default:
-									goto labelPause;
-								}
-							}
-							else
-							{
-								goto labelPause;
-							}
-						}
-					}
-					ColorIndex++;
-				}
-			}
-		}
-	}
-*/
 }
 
 void WiFiConnect() {
@@ -406,37 +325,51 @@ void WiFiConnect() {
 	Serial.print("Local IP: "); Serial.println(WiFi.localIP());
 }
 
-void FastLEDInitialization(CRGB* ledArray, unsigned int &ledCount) {
-	ledCount = rlcSettings.LEDCount;
-	ledArray = new CRGB[ledCount];
+void FastLEDInitialization()
+{
+	rlcLedController.LedCount = rlcSettings.SPILedCount;
+	rlcLedController.LedArray = new CRGB[rlcLedController.LedCount];
+	rlcLedController.PWMChannelCount = rlcSettings.PWMChannelCount;
+	rlcLedController.PWMChannels = new int[rlcLedController.PWMChannelCount];
+	int pwmChannelIndex = 0;
 	int startLED = 0;
 	for (size_t i = 0; i < rlcSettings.PinsCount; i++)
 	{
-		switch (rlcSettings.Pins[i].Number)
+		if(rlcSettings.Pins[i].Type == PinType::SPI)
 		{
-		case 0:
-			FastLED.addLeds<WS2812B, 0, GRB>(ledArray, startLED, rlcSettings.Pins[i].LedCount);
-			Serial.print("Select Pin 0, ");
-			break;
-		case 2:
-			FastLED.addLeds<WS2812B, 2, GRB>(ledArray, startLED, rlcSettings.Pins[i].LedCount);
-			Serial.print("Select Pin 2, ");
-			break;
-		case 4:
-			FastLED.addLeds<WS2812B, 4, GRB>(ledArray, startLED, rlcSettings.Pins[i].LedCount);
-			Serial.print("Select Pin 4, ");
-			break;
-		case 5:
-			FastLED.addLeds<WS2812B, 5, GRB>(ledArray, startLED, rlcSettings.Pins[i].LedCount);
-			Serial.print("Select Pin 5, ");
-			break;
-		default:
-			break;
+			switch(rlcSettings.Pins[i].Number)
+			{
+			case 0:
+				FastLED.addLeds<WS2812B, 0, GRB>(rlcLedController.LedArray, startLED, rlcSettings.Pins[i].LedCount);
+				Serial.print("Select Pin 0, ");
+				break;
+			case 2:
+				FastLED.addLeds<WS2812B, 2, GRB>(rlcLedController.LedArray, startLED, rlcSettings.Pins[i].LedCount);
+				Serial.print("Select Pin 2, ");
+				break;
+			case 4:
+				FastLED.addLeds<WS2812B, 4, GRB>(rlcLedController.LedArray, startLED, rlcSettings.Pins[i].LedCount);
+				Serial.print("Select Pin 4, ");
+				break;
+			case 5:
+				FastLED.addLeds<WS2812B, 5, GRB>(rlcLedController.LedArray, startLED, rlcSettings.Pins[i].LedCount);
+				Serial.print("Select Pin 5, ");
+				break;
+			default:
+				break;
+			}
+			Serial.print("Pin SPI: "); Serial.print(rlcSettings.Pins[i].Number);
+			Serial.print(", Start LED: "); Serial.print(startLED);
+			Serial.print(", LED count: "); Serial.println(rlcSettings.Pins[i].LedCount);
+			startLED += rlcSettings.Pins[i].LedCount;
 		}
-		Serial.print("Pin: "); Serial.print(rlcSettings.Pins[i].Number);
-		Serial.print(", Start LED: "); Serial.print(startLED);
-		Serial.print(", LED count: "); Serial.println(rlcSettings.Pins[i].LedCount);
-		startLED += rlcSettings.Pins[i].LedCount;
+		else if(rlcSettings.Pins[i].Type == PinType::PWM)
+		{
+			rlcLedController.PWMChannels[pwmChannelIndex] = rlcSettings.Pins[i].Number;
+			pinMode(rlcSettings.Pins[i].Number, OUTPUT);
+			Serial.print("Pin PWM: "); Serial.print(rlcLedController.PWMChannels[pwmChannelIndex]);
+			pwmChannelIndex++;
+		}
 	}
 }
 
@@ -595,3 +528,100 @@ byte ParsePackage() {
 	}
 	return result;
 }*/
+
+
+
+/*
+LabelStop:
+	MainLoopTime2 = millis();
+	if ((MainLoopTime2 - MainLoopTime1) > 50)
+	{
+		clientState = 1;
+		SendPackage(3);
+		FastLED.clear(true);
+		MainLoopTime1 = millis();
+	}
+	else if ((MainLoopTime2 - MainLoopTime1) > 10)
+	{
+		PackageParseResult = messageParser.Parse();
+		if (PackageParseResult > 0) { Serial.print("PackageResult: "); Serial.println(PackageParseResult); }
+		if (PackageParseResult == 1 || PackageParseResult == 7) {
+		LabelStart:
+			cyclogrammFile = SD.open(cyclogrammFileName);
+			if (cyclogrammFile) {
+				Serial.print("Current cyclogramm: "); Serial.println(cyclogrammFileName);
+				ColorIndex = 0;
+				LedTime1 = millis();
+			labelSetTime:
+				if (CurrentTime > 0)
+				{
+					cyclogrammFile.seek(CurrentTime);
+					CurrentTime = 0;
+				}
+				while (cyclogrammFile.available()) {
+					ledArray[ColorIndex].r = cyclogrammFile.read();
+					ledArray[ColorIndex].g = cyclogrammFile.read();
+					ledArray[ColorIndex].b = cyclogrammFile.read();
+					if (ColorIndex == rlcSettings.LEDCount - 1) {
+						FastLED.show();
+					label1:
+						LedTime2 = millis();
+						if ((LedTime2 - LedTime1) >= rlcSettings.RefreshInterval)
+						{
+							ColorIndex = 0;
+							LedTime1 = millis();
+							continue;
+						}
+						else
+						{
+							clientState = 2;
+							SendPackage(3);
+							PackageParseResult = messageParser.Parse();
+							if (PackageParseResult > 0) { Serial.print("PackageResult: "); Serial.println(PackageParseResult); }
+							switch (PackageParseResult) {
+							case 1:
+								goto label1;
+							case 2:
+								goto LabelStop;
+							case 6:
+								PauseTime1 = millis();
+								goto labelPause;
+							case 7:
+								goto labelSetTime;
+							default:
+								goto label1;
+							}
+						labelPause:
+							PauseTime2 = millis();
+							if ((PauseTime2 - PauseTime1) >= 50)
+							{
+								clientState = 3;
+								SendPackage(3);
+								PauseTime1 = millis();
+								PackageParseResult = messageParser.Parse();
+								switch (PackageParseResult)
+								{
+								case 1:
+									goto label1;
+								case 2:
+									goto LabelStop;
+								case 6:
+									goto labelPause;
+								case 7:
+									goto labelSetTime;
+								default:
+									goto labelPause;
+								}
+							}
+							else
+							{
+								goto labelPause;
+							}
+						}
+					}
+					ColorIndex++;
+				}
+			}
+		}
+	}
+*/

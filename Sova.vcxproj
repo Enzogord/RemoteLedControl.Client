@@ -84,7 +84,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RLCLedController\RLCLedController.h" />
-    <ClInclude Include="RLCMessageParserOld.h" />
     <ClInclude Include="RLCMessage\RLCEnums.h" />
     <ClInclude Include="RLCMessage\RLCMessage.h" />
     <ClInclude Include="RLCMessage\RLCMessageFactory.h" />
@@ -97,7 +96,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RLCLedController\RLCLedController.cpp" />
-    <ClCompile Include="RLCMessageParserOld.cpp" />
     <ClCompile Include="RLCMessage\RLCMessage.cpp" />
     <ClCompile Include="RLCMessage\RLCMessageFactory.cpp" />
     <ClCompile Include="RLCMessage\RLCMessageParser.cpp" />

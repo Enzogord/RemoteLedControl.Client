@@ -39,11 +39,6 @@ void RLCSetting::SaveSetting(String name, String value)
 		RefreshInterval = atoi(value.c_str());
 		return;
 	}
-	if (name == "LEDCount")
-	{
-		LEDCount = atoi(value.c_str());
-		return;
-	}
 	if (name == "ChannelCount")
 	{
 		ChannelCount = atoi(value.c_str());
@@ -65,35 +60,61 @@ void RLCSetting::SaveSetting(String name, String value)
 		PinsCount = Count;
 		Pins = new ClientPin[Count];
 		String buffer = "";
-		String PinNumberBuffer = "";
-		String LEDCountBuffer = "";
-		int PinIndex = 0;
+		String pinBuffer = "";
+		String ledCountBuffer = "";
+		int pinIndex = 0;
 		for (size_t i = 0; i < source.length(); i++)
 		{
 			if (source[i] == '-')
 			{
-				PinNumberBuffer = buffer;
+				pinBuffer = buffer;
 				buffer = "";
 			}
 			else if (source[i] == ',')
 			{
-				LEDCountBuffer = buffer;
+				ledCountBuffer = buffer;
 				buffer = "";
 			}
 			else
 			{
 				buffer += source[i];
 			}
-			if ((PinNumberBuffer != "") && (LEDCountBuffer != ""))
+			if ((pinBuffer != "") && (ledCountBuffer != ""))
 			{
-				Serial.print("Pin index: "); Serial.println(PinIndex);
-				Serial.print("Pin Number: "); Serial.println(PinNumberBuffer);
-				Serial.print("Pin LedCount: "); Serial.println(LEDCountBuffer);
-				Pins[PinIndex].Number = atoi(PinNumberBuffer.c_str());
-				Pins[PinIndex].LedCount = atoi(LEDCountBuffer.c_str());
-				PinNumberBuffer = "";
-				LEDCountBuffer = "";
-				PinIndex += 1;
+				char pinType = pinBuffer[0];
+				String pinNumberBuffer = pinBuffer.substring(1);
+
+				Serial.print("Pin index: "); Serial.println(pinIndex);
+				Serial.print("Pin type: "); Serial.println(pinType);
+				Serial.print("Pin number: "); Serial.println(pinNumberBuffer);
+				
+				Serial.print("Pin LedCount: "); Serial.println(ledCountBuffer);
+				switch(pinType)
+				{
+				case 'S': 
+					Pins[pinIndex].Type = PinType::SPI;
+					break;
+				case 'P': 
+					Pins[pinIndex].Type = PinType::PWM;
+					break;
+				default:
+					Serial.print("Pin type not parsed");
+					Pins[pinIndex].Type = PinType::SPI;
+					break;
+				}
+				Pins[pinIndex].Number = atoi(pinNumberBuffer.c_str());
+				Pins[pinIndex].LedCount = atoi(ledCountBuffer.c_str());
+				if(Pins[pinIndex].Type == PinType::SPI)
+				{
+					SPILedCount += Pins[pinIndex].LedCount;
+				}
+				if(Pins[pinIndex].Type == PinType::PWM)
+				{
+					PWMChannelCount++;
+				}
+				pinNumberBuffer = "";
+				ledCountBuffer = "";
+				pinIndex += 1;
 			}
 
 		}

@@ -2,7 +2,7 @@
 #include "FastLED.h"
 #include <SD.h>
 
-typedef void (*FastLedInitialization)(CRGB* ledArray, unsigned int &ledCount);
+typedef void (*FastLedInitialization)();
 typedef void (*ReopenFile)();
 
 enum class LEDControllerStatuses {
@@ -11,9 +11,24 @@ enum class LEDControllerStatuses {
 	Paused
 };
 
+inline const char* ToString(LEDControllerStatuses ledControlledStatus)
+{
+	switch(ledControlledStatus)
+	{
+	case LEDControllerStatuses::Played:   return "Played";
+	case LEDControllerStatuses::Stoped:   return "Stoped";
+	case LEDControllerStatuses::Paused:   return "Paused";
+	default:      return "None";
+	}
+}
+
 class RLCLedController
 {
 public:
+	unsigned int LedCount;
+	CRGB* LedArray;
+	unsigned int PWMChannelCount;
+	int* PWMChannels;
 	LEDControllerStatuses Status;
 	boolean IsInitialized;
 	//время одного кадра, мс (по умолчанию 50 мс)
@@ -34,9 +49,8 @@ public:
 private:
 	ReopenFile reopenFileMethod;
 	File cyclogrammFile;
-	CRGB *ledArray;
+	
 
-	unsigned int ledCount;
 	unsigned int frameBytes;
 
 	boolean showNext = false;	
