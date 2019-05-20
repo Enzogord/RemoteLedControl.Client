@@ -7,7 +7,6 @@
 #include <WiFiUdp.h>
 #include "FastLED.h"
 #include "RLCSetting.h"
-#include "RLCMessageParserOld.h"
 #include "RLCMessage/RLCMessage.h"
 #include "RLCMessage/RLCMessageParser.h"
 #include "RLCMessage/RLCEnums.h"
@@ -80,6 +79,7 @@ void InitializeSDCard()
 
 void WaitingServerIPAddress() 
 {
+	FastLED.showColor(CRGB::Magenta);
 	Serial.println("Waiting Server IP address");
 	RLCMessage requestServerIPMessage = messageFactory.RequestServerIP(clientState);
 	uint8_t* requestBytes = requestServerIPMessage.GetBytes();
@@ -123,6 +123,7 @@ void WaitingServerIPAddress()
 
 void WaitingTimeSynchronization(IPAddress &ipAddress, uint16_t port)
 {
+	FastLED.showColor(CRGB::Green);
 	udp.begin(port);
 	syncTime.Init(udp);
 	while(!syncTime.SynchronizeTime(ipAddress, port))
@@ -135,7 +136,7 @@ void WaitingTimeSynchronization(IPAddress &ipAddress, uint16_t port)
 void WaitingConnectToRLCServer(IPAddress &ipAddress, uint16_t port)
 {
 	Serial.print("Waiting connect to "); Serial.print(ipAddress); Serial.print(":"); Serial.println(port);
-	FastLED.showColor(CRGB::BlueViolet, 100);
+	FastLED.showColor(CRGB::Blue);
 	unsigned long connectionTimePoint = millis();
 
 	int tcpConnected = 0;
@@ -146,8 +147,6 @@ void WaitingConnectToRLCServer(IPAddress &ipAddress, uint16_t port)
 			tcpConnected = TryConnectToRLCServer(ipAddress, port, 1000UL);
 		}
 	}
-	
-	FastLED.clear(true);
 }
 
 //попытка однократного TCP соединения 
@@ -157,8 +156,6 @@ int TryConnectToRLCServer(IPAddress &ipAddress, uint16_t port, unsigned long tim
 	//пересоздаем клиент, потому что при разрыве связи не может заного подключиться
 	tcpClient = WiFiClient();
 	Serial.println("Connecting to TCP server");
-	//Serial.print("Current connection: "); Serial.println(tcpClient.connected());
-	//Serial.print("Current status: "); Serial.println(tcpClient.status());
 	tcpClient.setTimeout(timeout);
 
 	tcpConnected = tcpClient.connect(ipAddress, port);
@@ -197,12 +194,13 @@ void ReadTCPConnection()
 		if(message.IsInitialized && message.Key == rlcSettings.ProjectKey && message.SourceType == SourceTypeEnum::Server)
 		{
 			OnReceiveMessage(message);
-		}
+		}		
 	}
 }
 
 void OnReceiveMessage(RLCMessage &message)
 {
+	RLCMessage responseMessage;
 	switch(message.MessageType)
 	{
 	case MessageTypeEnum::Play:
@@ -222,10 +220,17 @@ void OnReceiveMessage(RLCMessage &message)
 		rlcLedController.SetPosition(message.TimeFrame);
 		rlcLedController.Play();
 		break;
-	case MessageTypeEnum::NotSet:
+	case MessageTypeEnum::RequestClientInfo:
+		responseMessage = messageFactory.SendClientInfo(clientState);
+		SendMessage(responseMessage);
+		break;
 	default:
 		break;
 	}
+}
+
+void SendMessage(RLCMessage message) {
+	tcpClient.write(message.GetBytes(), RLC_MESSAGE_LENGTH);
 }
 
 void OpenCyclogrammFile()
@@ -267,7 +272,7 @@ void setup()
 	Serial.print("LEDCount: ");
 	Serial.println(rlcSettings.SPILedCount);
 	Serial.print("Pins count: ");
-	Serial.println(rlcSettings.PinsCount);
+	Serial.println(rlcSettings.PinsCount);	
 	for (size_t i = 0; i < rlcSettings.PinsCount; i++)
 	{
 		Serial.print("Pin: ");
@@ -276,6 +281,10 @@ void setup()
 		Serial.print("-");
 		Serial.println(rlcSettings.Pins[i].LedCount);
 	}
+	Serial.print("DefaultLightMode: ");
+	Serial.println(rlcSettings.DefaultLightOn);
+	Serial.print("SPILedGlobalBrightness: ");
+	Serial.println(rlcSettings.SPILedGlobalBrightness);
 
 	OpenCyclogrammFile();
 	rlcLedController.Initialize(FastLEDInitialization, cyclogrammFile, OpenCyclogrammFile);
@@ -289,17 +298,13 @@ void setup()
 	WaitingServerIPAddress();
 	WaitingTimeSynchronization(serverIP, NTP_PORT);
 	WaitingConnectToRLCServer(serverIP, rlcSettings.UDPPort);
-	
-	FastLED.clear(true);
-	
+	DefaultLight();
 	ticker.attach_ms(rlcLedController.FrameTime, NextFrameHandler);
 }
 
 void loop(void) {
 	ReadTCPConnection();	
 	rlcLedController.Show();
-	/*Time currentTime = syncTime.Now();
-	Serial.print("Current time: "); Serial.print(currentTime.Seconds); Serial.print(" sec, "); Serial.print(currentTime.Microseconds); Serial.println(" mcs");*/
 }
 
 void WiFiConnect() {
@@ -309,7 +314,7 @@ void WiFiConnect() {
 	LabelConnection:
 	WiFi.disconnect();
 	WiFi.begin(rlcSettings.SSID.c_str(), rlcSettings.Password.c_str());
-	FastLED.showColor(CRGB::Gold, 100);
+	FastLED.showColor(CRGB::Yellow);
 	while (WiFi.status() != WL_CONNECTED) {
 		delay(10);
 		if (connectionTime > 10000)
@@ -319,7 +324,6 @@ void WiFiConnect() {
 		connectionTime += 10;
 	}
 	broadcastAddress = ~WiFi.subnetMask() | WiFi.gatewayIP();
-	FastLED.clear(true);
 	Serial.println("");
 	Serial.println("WiFi connected");
 	Serial.print("Local IP: "); Serial.println(WiFi.localIP());
@@ -369,6 +373,32 @@ void FastLEDInitialization()
 			pinMode(rlcSettings.Pins[i].Number, OUTPUT);
 			Serial.print("Pin PWM: "); Serial.print(rlcLedController.PWMChannels[pwmChannelIndex]);
 			pwmChannelIndex++;
+		}
+	}
+	FastLED.setBrightness(rlcSettings.SPILedGlobalBrightness);
+}
+
+void DefaultLight() {
+	if(!rlcLedController.IsInitialized)
+	{
+		return;
+	}
+	//Включение свечения по умолчанию, если включена настройка
+	if(rlcSettings.DefaultLightOn)
+	{
+		Serial.print("LED Brightness: "); Serial.print(FastLED.getBrightness());
+		FastLED.showColor(CRGB::White);
+		for(size_t i = 0; i < rlcLedController.PWMChannelCount; i++)
+		{
+			analogWrite(rlcLedController.PWMChannels[i], 255);
+		}
+	}
+	else
+	{
+		FastLED.clear(true);
+		for(size_t i = 0; i < rlcLedController.PWMChannelCount; i++)
+		{
+			analogWrite(rlcLedController.PWMChannels[i], 0);
 		}
 	}
 }

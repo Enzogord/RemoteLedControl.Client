@@ -39,6 +39,8 @@ public:
 	unsigned int SPILedCount;
 	unsigned int PWMChannelCount;
 	byte ChannelCount;
+	bool DefaultLightOn;
+	uint8_t SPILedGlobalBrightness;
 	ClientPin* Pins;
 	byte PinsCount;
 	RLCSetting();

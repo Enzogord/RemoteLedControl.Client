@@ -31,6 +31,7 @@ enum class MessageTypeEnum
 	Pause = 3,
 	PlayFrom = 4,
 	SendServerIP = 5,
+	RequestClientInfo = 6,
 
 	//to server
 	ClientInfo = 100,
@@ -47,6 +48,7 @@ inline const char* ToString(MessageTypeEnum clientState)
 	case MessageTypeEnum::Pause:   return "Pause";
 	case MessageTypeEnum::PlayFrom:   return "PlayFrom";
 	case MessageTypeEnum::SendServerIP:   return "SendServerIP";
+	case MessageTypeEnum::RequestClientInfo:   return "RequestClientInfo";
 	case MessageTypeEnum::ClientInfo:   return "ClientInfo";
 	case MessageTypeEnum::RequestServerIp:   return "RequestServerIp";
 	default:      return "NotSet";

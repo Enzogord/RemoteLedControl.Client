@@ -121,6 +121,30 @@ void RLCSetting::SaveSetting(String name, String value)
 		Serial.println("DEBUG END!");
 		return;
 	}
+	if(name == "DefaultLightMode")
+	{
+		if(value == "On")
+		{
+			DefaultLightOn = true;
+			return;
+		}
+		DefaultLightOn = false;
+	}
+	if(name == "SPILedGlobalBrightness")
+	{
+		int brightness = atoi(value.c_str());
+		if(brightness >= 255)
+		{
+			SPILedGlobalBrightness = 255;
+			return;
+		}
+		else if(brightness <= 0)
+		{
+			SPILedGlobalBrightness = 0;
+			return;
+		}
+		SPILedGlobalBrightness = brightness;
+	}
 }
 
 void RLCSetting::ReadSetting(File SettingFile)

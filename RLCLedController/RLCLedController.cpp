@@ -87,7 +87,7 @@ void RLCLedController::Show()
 			Serial.print("Frame generation time: "); Serial.println(millis() - a1);
 			for(unsigned int i = 0; i < PWMChannelCount; i++)
 			{
-				int pwmOutput = cyclogrammFile.read() + 1000;
+				int pwmOutput = cyclogrammFile.read();
 				Serial.print("PWM output: "); Serial.println(pwmOutput);
 				analogWrite(PWMChannels[i], pwmOutput);
 			}

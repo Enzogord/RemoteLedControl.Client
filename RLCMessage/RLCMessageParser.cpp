@@ -87,6 +87,9 @@ bool RLCMessageParser::TryParseMessageType(MessageTypeEnum & messageType, uint8_
 		case(5):
 			messageType = MessageTypeEnum::SendServerIP;
 			return true;
+		case(6):
+			messageType = MessageTypeEnum::RequestClientInfo;
+			return true;
 
 			//to server
 		case(100):
