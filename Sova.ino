@@ -41,13 +41,6 @@ RLCMessageFactory messageFactory;
 boolean connectionInProgress = false;
 RLCLedController rlcLedController;
 
-uint32 CurrentTime = 0; // Момент времени с которого запуститься циклограмма
-unsigned long MainLoopTime1, MainLoopTime2;  // Для подсчета временного интервала работы программы на главном цикле для отправки пакета с номером клиента на сервер с задержкой
-unsigned long LedTime1, LedTime2;  // Для подсчета временного интервала работы программы на цикле включения светодиодов для сравнения с интервалом в циклограмме (50мс)
-unsigned long PauseTime1, PauseTime2;  // Для подсчета временного интервала работы программы на цикле паузы
-int ColorIndex; // Индекс в массиве LedArray, от 0 до количества светодиодов -1
-byte PackageParseResult; // Результат парсинга полученного пакета (по кодам пакетов в протоколе передачи)
-
 void Initializations() 
 {
 	Serial.begin(115200);
