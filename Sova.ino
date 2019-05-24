@@ -1,5 +1,4 @@
-﻿
-#include <Ticker.h>
+﻿#include <Ticker.h>
 #include <SD.h>
 #include <Hash.h>
 #include <EEPROM.h>
