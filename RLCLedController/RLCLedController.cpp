@@ -1,7 +1,5 @@
 #include "RLCLedController.h"
 
-#define ANALOG_HIGH 255
-
 RLCLedController::RLCLedController()
 {
 	IsInitialized = false;
@@ -16,9 +14,7 @@ void RLCLedController::Initialize(FastLedInitialization initializerMethod, File 
 {
 	RLCLedController::reopenFileMethod = reopenFileMethod;
 	RLCLedController::cyclogrammFile = cyclogrammFile;
-	//CRGB leds;
 	initializerMethod();
-	//ledArray = &leds;
 	frameBytes = LedCount * 3;
 	IsInitialized = true;
 }
@@ -87,9 +83,9 @@ void RLCLedController::Show()
 			Serial.print("Frame generation time: "); Serial.println(millis() - a1);
 			for(unsigned int i = 0; i < PWMChannelCount; i++)
 			{
-				int pwmOutput = cyclogrammFile.read();
+				uint8_t pwmOutput = cyclogrammFile.read();				
 				Serial.print("PWM output: "); Serial.println(pwmOutput);
-				analogWrite(PWMChannels[i], pwmOutput);
+				analogWrite(PWMChannels[i], (uint8_t)~pwmOutput);
 			}
 			FastLED.show();
 		}
