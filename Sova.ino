@@ -289,8 +289,8 @@ void setup()
 	Serial.print("----------------------------");
 	Serial.println();
 
-	IsDigitalOutputss = rlcSettings.IsDigitalPWMSignal;
-	InvertedOutputss = rlcSettings.InvertedPWMSignal;
+	IsDigitalOutput = rlcSettings.IsDigitalPWMSignal;
+	InvertedOutput = rlcSettings.InvertedPWMSignal;
 	messageFactory = RLCMessageFactory(rlcSettings.ProjectKey, rlcSettings.PlateNumber);
 	
 	WiFiConnect();
