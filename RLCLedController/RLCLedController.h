@@ -1,6 +1,7 @@
 #pragma once
 #include "FastLED.h"
 #include <SD.h>
+#include "../Service/PinController.h"
 
 typedef void (*FastLedInitialization)();
 typedef void (*ReopenFile)();

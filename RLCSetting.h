@@ -41,6 +41,8 @@ public:
 	byte ChannelCount;
 	bool DefaultLightOn;
 	uint8_t SPILedGlobalBrightness;
+	bool IsDigitalPWMSignal;
+	bool InvertedPWMSignal;
 	ClientPin* Pins;
 	byte PinsCount;
 	RLCSetting();

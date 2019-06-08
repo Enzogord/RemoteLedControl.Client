@@ -12,6 +12,7 @@
 #include "RLCMessage/RLCMessageFactory.h"
 #include "RLCLedController/RLCLedController.h"
 #include "TimeSynchronization/SyncTime.h"
+#include "Service/PinController.h"
 
 #define chipSelect 15
 //таймаут ожидания при запросе по мультикасту
@@ -288,6 +289,8 @@ void setup()
 	Serial.print("----------------------------");
 	Serial.println();
 
+	IsDigitalOutputss = rlcSettings.IsDigitalPWMSignal;
+	InvertedOutputss = rlcSettings.InvertedPWMSignal;
 	messageFactory = RLCMessageFactory(rlcSettings.ProjectKey, rlcSettings.PlateNumber);
 	
 	WiFiConnect();
@@ -386,7 +389,7 @@ void DefaultLight() {
 		FastLED.showColor(CRGB::White);
 		for(size_t i = 0; i < rlcLedController.PWMChannelCount; i++)
 		{
-			analogWrite(rlcLedController.PWMChannels[i], ANALOG_HIGH);
+			PinWrite(rlcLedController.PWMChannels[i], ANALOG_HIGH);
 		}
 	}
 	else
@@ -394,7 +397,7 @@ void DefaultLight() {
 		FastLED.clear(true);
 		for(size_t i = 0; i < rlcLedController.PWMChannelCount; i++)
 		{
-			analogWrite(rlcLedController.PWMChannels[i], ANALOG_LOW);
+			PinWrite(rlcLedController.PWMChannels[i], ANALOG_LOW);
 		}
 	}
 }

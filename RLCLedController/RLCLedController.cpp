@@ -85,7 +85,7 @@ void RLCLedController::Show()
 			{
 				uint8_t pwmOutput = cyclogrammFile.read();				
 				Serial.print("PWM output: "); Serial.println(pwmOutput);
-				analogWrite(PWMChannels[i], (uint8_t)~pwmOutput);
+				PinWrite(PWMChannels[i], pwmOutput);
 			}
 			FastLED.show();
 		}

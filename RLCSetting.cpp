@@ -145,6 +145,16 @@ void RLCSetting::SaveSetting(String name, String value)
 		}
 		SPILedGlobalBrightness = brightness;
 	}
+
+	if(name == "IsDigitalPWMSignal")
+	{
+		IsDigitalPWMSignal = (value == "1");
+	}
+
+	if(name == "InvertedPWMSignal")
+	{
+		InvertedPWMSignal = (value == "1");
+	}
 }
 
 void RLCSetting::ReadSetting(File SettingFile)

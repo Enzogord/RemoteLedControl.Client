@@ -31,6 +31,12 @@
     <Filter Include="Source Files\RLCLedController">
       <UniqueIdentifier>{613e2e00-62e4-4b06-a2dc-645b5fd3b30b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Service">
+      <UniqueIdentifier>{4e318e09-ad37-4601-9228-a8dff9b48799}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Service">
+      <UniqueIdentifier>{8f58bc4a-0003-43cf-961a-2e6b8362c3c5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="Sova.ino" />
@@ -66,6 +72,9 @@
     <ClInclude Include="RLCLedController\RLCLedController.h">
       <Filter>Header Files\RLCLedController</Filter>
     </ClInclude>
+    <ClInclude Include="Service\PinController.h">
+      <Filter>Header Files\Service</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RLCSetting.cpp">
@@ -88,6 +97,9 @@
     </ClCompile>
     <ClCompile Include="RLCLedController\RLCLedController.cpp">
       <Filter>Source Files\RLCLedController</Filter>
+    </ClCompile>
+    <ClCompile Include="Service\PinController.cpp">
+      <Filter>Source Files\Service</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

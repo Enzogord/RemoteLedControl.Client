@@ -89,6 +89,7 @@
     <ClInclude Include="RLCMessage\RLCMessageFactory.h" />
     <ClInclude Include="RLCMessage\RLCMessageParser.h" />
     <ClInclude Include="RLCSetting.h" />
+    <ClInclude Include="Service\PinController.h" />
     <ClInclude Include="TimeSynchronization\SyncTime.h" />
     <ClInclude Include="TimeSynchronization\Time.h" />
     <ClInclude Include="__vm\.RemoteLEDControlClient.vsarduino.h" />
@@ -100,6 +101,7 @@
     <ClCompile Include="RLCMessage\RLCMessageFactory.cpp" />
     <ClCompile Include="RLCMessage\RLCMessageParser.cpp" />
     <ClCompile Include="RLCSetting.cpp" />
+    <ClCompile Include="Service\PinController.cpp" />
     <ClCompile Include="TimeSynchronization\SyncTime.cpp" />
     <ClCompile Include="TimeSynchronization\Time.cpp" />
   </ItemGroup>
