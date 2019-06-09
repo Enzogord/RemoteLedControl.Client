@@ -36,6 +36,10 @@ void RLCLedController::Stop()
 		return;
 	}
 	FastLED.clear(true);
+	for(unsigned int i = 0; i < PWMChannelCount; i++)
+	{
+		PinWrite(PWMChannels[i], LOW);
+	}
 	//—брос счетчиков и позиций в начальные положени€
 	cyclogrammFile.seek(0);
 	framePosition = 0;
