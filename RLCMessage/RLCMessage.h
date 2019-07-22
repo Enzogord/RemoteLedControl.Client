@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include "RLCEnums.h"
+#include "../TimeSynchronization/Time.h"
 
 #define RLC_MESSAGE_LENGTH 200
 
@@ -20,7 +21,7 @@ public:
 	uint16_t ClientNumber;
 	ClientStateEnum ClientState;
 	IPAddress IP;
-	uint32_t TimeFrame;
+	Time StartTime;
 
 	uint8_t* GetBytes();
 

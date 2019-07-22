@@ -1,7 +1,5 @@
 #include "RLCMessage.h"
 
-
-
 RLCMessage::RLCMessage()
 {
 	SourceType = SourceTypeEnum::NotSet;
@@ -10,7 +8,7 @@ RLCMessage::RLCMessage()
 	ClientNumber = 0;
 	ClientState = ClientStateEnum::NotSet;
 	IP = IPAddress(0, 0, 0, 0);
-	TimeFrame = 0;
+	StartTime = Time();
 }
 
 RLCMessage::~RLCMessage()
@@ -42,10 +40,11 @@ uint8_t* RLCMessage::GetBytes()
 	messageBuffer[byteIndex++] = (uint8_t)(IP[2]);
 	messageBuffer[byteIndex++] = (uint8_t)(IP[3]);
 
-	messageBuffer[byteIndex++] = (uint8_t)(TimeFrame >> 24);
-	messageBuffer[byteIndex++] = (uint8_t)(TimeFrame >> 16);
-	messageBuffer[byteIndex++] = (uint8_t)(TimeFrame >> 8);
-	messageBuffer[byteIndex++] = (uint8_t)(TimeFrame >> 0);
+	StartTime.SetSecondsTo(messageBuffer, byteIndex);
+	byteIndex += 4;
+	
+	StartTime.SetSecondFractionsTo(messageBuffer, byteIndex);
+	byteIndex += 4;
 
 	return messageBuffer;
 }

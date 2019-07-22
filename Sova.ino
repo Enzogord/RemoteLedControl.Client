@@ -214,7 +214,8 @@ void OnReceiveMessage(RLCMessage &message)
 		break;
 	case MessageTypeEnum::PlayFrom:
 		Serial.println("Receive PlayFrom message");
-		rlcLedController.SetPosition(message.TimeFrame);
+		Serial.print("Now: "); Serial.println(syncTime.Now().Seconds);
+		Serial.print("Received time: "); Serial.println(message.StartTime.Seconds);
 		rlcLedController.Play();
 		break;
 	case MessageTypeEnum::RequestClientInfo:

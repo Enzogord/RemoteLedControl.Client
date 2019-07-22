@@ -43,21 +43,9 @@ int SyncTime::SynchronizeTime(IPAddress &address, uint16_t port)
 	packetBuffer[15] = 52;
 
 	Time currentTime = Now();
-
-	uint32_t currentFractions = ((unsigned long long)currentTime.Microseconds) * 0x100000000L / 1000000UL;
-	//Serial.print("currentFractions: "); Serial.println(currentFractions);
-
-	//Заполнение времени отправки
-	packetBuffer[24] = currentTime.Seconds >> 24;
-	packetBuffer[25] = currentTime.Seconds >> 16;
-	packetBuffer[26] = currentTime.Seconds >> 8;
-	packetBuffer[27] = currentTime.Seconds;
-
-	packetBuffer[28] = currentFractions >> 24;
-	packetBuffer[29] = currentFractions >> 16;
-	packetBuffer[30] = currentFractions >> 8;
-	packetBuffer[31] = currentFractions;
-	//Serial.print("Sended bytes: ");
+	currentTime.SetSecondsTo(packetBuffer, 24);
+	currentTime.SetSecondFractionsTo(packetBuffer, 28);
+	
 	for (int i = 24; i < 32; i++)
 	{
 		Serial.print(packetBuffer[i]); Serial.print(", ");
@@ -77,53 +65,16 @@ int SyncTime::SynchronizeTime(IPAddress &address, uint16_t port)
 			udpService.read(packetBuffer, NTP_PACKET_SIZE);
 			
 			//T1
-			unsigned long t1Secs;
-			t1Secs = (unsigned long)packetBuffer[24] << 24;
-			t1Secs |= (unsigned long)packetBuffer[25] << 16;
-			t1Secs |= (unsigned long)packetBuffer[26] << 8;
-			t1Secs |= (unsigned long)packetBuffer[27];
-			unsigned long t1Fractions;
-			t1Fractions = (unsigned long)packetBuffer[28] << 24;
-			t1Fractions |= (unsigned long)packetBuffer[29] << 16;
-			t1Fractions |= (unsigned long)packetBuffer[30] << 8;
-			t1Fractions |= (unsigned long)packetBuffer[31];
-			uint32_t t1Microseconds = ((unsigned long long)t1Fractions) * 1000000UL / 0x100000000L;
-			Time t1 = Time(t1Secs, t1Microseconds);
-			//Serial.print("T1: "); Serial.print(t1.Seconds); Serial.print(" sec, "); Serial.println(t1.Microseconds);
+			Time t1 = Time(packetBuffer, 24);
 
 			//T2
-			unsigned long t2Secs;
-			t2Secs = (unsigned long)packetBuffer[32] << 24;
-			t2Secs |= (unsigned long)packetBuffer[33] << 16;
-			t2Secs |= (unsigned long)packetBuffer[34] << 8;
-			t2Secs |= (unsigned long)packetBuffer[35];
-			unsigned long t2Fractions;
-			t2Fractions = (unsigned long)packetBuffer[36] << 24;
-			t2Fractions |= (unsigned long)packetBuffer[37] << 16;
-			t2Fractions |= (unsigned long)packetBuffer[38] << 8;
-			t2Fractions |= (unsigned long)packetBuffer[39];
-			uint32_t t2Microseconds = ((unsigned long long)t2Fractions) * 1000000UL / 0x100000000L;
-			Time t2 = Time(t2Secs, t2Microseconds);
-			//Serial.print("T2: "); Serial.print(t2.Seconds); Serial.print(" sec, "); Serial.println(t2.Microseconds);
+			Time t2 = Time(packetBuffer, 32);
 
 			//T3
-			unsigned long t3Secs;
-			t3Secs = (unsigned long)packetBuffer[40] << 24;
-			t3Secs |= (unsigned long)packetBuffer[41] << 16;
-			t3Secs |= (unsigned long)packetBuffer[42] << 8;
-			t3Secs |= (unsigned long)packetBuffer[43];
-			unsigned long t3Fractions;
-			t3Fractions = (unsigned long)packetBuffer[44] << 24;
-			t3Fractions |= (unsigned long)packetBuffer[45] << 16;
-			t3Fractions |= (unsigned long)packetBuffer[46] << 8;
-			t3Fractions |= (unsigned long)packetBuffer[47];
-			uint32_t t3Microseconds = ((unsigned long long)t3Fractions) * 1000000UL / 0x100000000L;
-			Time t3 = Time(t3Secs, t3Microseconds);
-			//Serial.print("T3: "); Serial.print(t3.Seconds); Serial.print(" sec, "); Serial.println(t3.Microseconds);
+			Time t3 = Time(packetBuffer, 40);
 
 			//T4
 			Time t4 = Now();
-			//Serial.print("T4: "); Serial.print(t4.Seconds); Serial.print(" sec, "); Serial.println(t4.Microseconds);
 
 			LastTime = GetCorrectedTime(t1, t2, t3, t4);
 			LastSynchronizationTime = LastTime;
