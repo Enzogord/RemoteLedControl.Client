@@ -32,7 +32,7 @@ public:
 
 	Time GetCorrectedTime(Time sendTime, Time serverReceiveTime, Time serverSendTime, Time receiveTime);
 
-	Time SubstractTime(Time a, Time b);
+	//Time SubstractTime(Time a, Time b);
 
 	void CalcTime(uint32_t seconds, TimeParameters &tm);
 };

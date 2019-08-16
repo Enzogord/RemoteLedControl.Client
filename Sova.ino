@@ -49,7 +49,7 @@ void Initializations()
 {
 	Serial.begin(115200);
 	clientState = ClientStateEnum::Stoped;
-	syncTime.LastTime = Time(63681897600, 0); //01.01.2019 00:00:00:000000
+	//syncTime.LastTime = Time(63681897600, 0); //01.01.2019 00:00:00:000000
 
 	// Отключение точки доступа
 	WiFi.softAPdisconnect(true);
@@ -214,8 +214,8 @@ void OnReceiveMessage(RLCMessage &message)
 		break;
 	case MessageTypeEnum::PlayFrom:
 		Serial.println("Receive PlayFrom message");
-		Serial.print("Now: "); Serial.println(syncTime.Now().Seconds);
-		Serial.print("Received time: "); Serial.println(message.StartTime.Seconds);
+		Serial.print("Now: "); Serial.println(syncTime.Now().GetSeconds());
+		Serial.print("Received time: "); Serial.println(message.LaunchTime.GetSeconds());
 		rlcLedController.Play();
 		break;
 	case MessageTypeEnum::RequestClientInfo:
@@ -227,7 +227,7 @@ void OnReceiveMessage(RLCMessage &message)
 	}
 }
 
-void SendMessage(RLCMessage message) {
+void SendMessage(RLCMessage &message) {
 	tcpClient.write(message.GetBytes(), RLC_MESSAGE_LENGTH);
 }
 
@@ -248,6 +248,23 @@ void NextFrameHandler()
 void setup()
 {
 	Initializations();
+
+	/*Time time1 = Time(2, 500000);
+	Time time2 = Time(2, 500000);
+	Serial.print("Is equal: "); Serial.println(time1 == time2);
+	Serial.print("Is not equal: "); Serial.println(time1 != time2);
+	Serial.print("Is greater: "); Serial.println(time1 > time2);
+	Serial.print("Is lesser: "); Serial.println(time1 < time2);
+	Serial.print("Is greater or equal: "); Serial.println(time1 >= time2);
+	Serial.print("Is lesser or equal: "); Serial.println(time1 <= time2);
+
+	Time resultTime = time1 + time2;
+	Serial.print("Sum: "); Serial.print(resultTime.GetSeconds()); Serial.print("sec, "); Serial.print(resultTime.GetMicroseconds()); Serial.println("mcs");*/
+
+
+
+	/*Time resultTime = syncTime.SubstractTime(time1, time2);
+	Serial.print("Result time: "); Serial.print(resultTime.Seconds); Serial.print("sec, "); Serial.print(resultTime.Microseconds); Serial.println("mcs");*/
 
 	settingFile = SD.open("set.txt", FILE_READ);
 	rlcSettings.ReadSetting(settingFile);
@@ -299,12 +316,13 @@ void setup()
 	WaitingTimeSynchronization(serverIP, NTP_PORT);
 	WaitingConnectToRLCServer(serverIP, rlcSettings.UDPPort);
 	DefaultLight();
-	ticker.attach_ms(rlcLedController.FrameTime, NextFrameHandler);
+	ticker.attach_ms(rlcLedController.frameTime, NextFrameHandler);
 }
 
 void loop(void) {
 	ReadTCPConnection();	
 	rlcLedController.Show();
+	Serial.print("Now: "); Serial.print(syncTime.Now().GetSeconds()); Serial.print("sec "); Serial.print(syncTime.Now().GetMicroseconds()); Serial.println("mcs");
 }
 
 void WiFiConnect() {

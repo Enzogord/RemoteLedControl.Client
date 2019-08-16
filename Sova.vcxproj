@@ -83,6 +83,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="RLCLedController\LaunchController.h" />
     <ClInclude Include="RLCLedController\RLCLedController.h" />
     <ClInclude Include="RLCMessage\RLCEnums.h" />
     <ClInclude Include="RLCMessage\RLCMessage.h" />
@@ -96,6 +97,7 @@
     <ClInclude Include="__vm\.Sova.vsarduino.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="RLCLedController\LaunchController.cpp" />
     <ClCompile Include="RLCLedController\RLCLedController.cpp" />
     <ClCompile Include="RLCMessage\RLCMessage.cpp" />
     <ClCompile Include="RLCMessage\RLCMessageFactory.cpp" />

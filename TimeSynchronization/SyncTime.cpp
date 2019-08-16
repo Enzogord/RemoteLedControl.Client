@@ -21,7 +21,7 @@ void SyncTime::Init(WiFiUDP &udp)
 Time SyncTime::Now()
 {
 	uint32_t deltaMicros = micros() - LastMicros;
-	LastTime.AddMicroseconds(deltaMicros);
+	LastTime += deltaMicros;
 	LastMicros += deltaMicros;
 	return LastTime;
 }
@@ -51,7 +51,7 @@ int SyncTime::SynchronizeTime(IPAddress &address, uint16_t port)
 		Serial.print(packetBuffer[i]); Serial.print(", ");
 	}
 	Serial.println();
-	Serial.print("Time before sended: "); Serial.print(currentTime.Seconds); Serial.print(" sec, "); Serial.println(currentTime.Microseconds);
+	Serial.print("Time before sended: "); Serial.print(currentTime.GetSeconds()); Serial.print(" sec, "); Serial.println(currentTime.GetMicroseconds());
 
 	udpService.beginPacket(address, port);
 	udpService.write(packetBuffer, NTP_PACKET_SIZE);
@@ -97,11 +97,19 @@ Time SyncTime::GetCorrectedTime(Time sendTime, Time serverReceiveTime, Time serv
 	//((Ò2 – Ò1) + (Ò3 – Ò4)) / 2
 	
 	//Time receivedTime = receiveTime;
-	Time A = SubstractTime(serverReceiveTime, sendTime);
-	Time B = SubstractTime(serverSendTime, receiveTime);
+	// A = T2 - T1
+	Time A = serverReceiveTime - sendTime;// SubstractTime(serverReceiveTime, sendTime);
+
+	// B = T3 - T4
+	Time B = serverSendTime - receiveTime;// SubstractTime(serverSendTime, receiveTime);
 
 	//sum À + B
-	uint32_t microC = A.Microseconds + B.Microseconds;
+	Time C = A + B;
+	C /= (uint64_t)2;
+	C += receiveTime;
+	return C;
+	/*
+	//uint32_t microC = A.Microseconds + B.Microseconds;
 	uint64_t sumSeconds = (uint64_t)A.Seconds + (uint64_t)B.Seconds + (uint64_t)(microC / 1000000);
 	uint32_t sumMicroseconds = microC % 1000000;
 
@@ -114,9 +122,10 @@ Time SyncTime::GetCorrectedTime(Time sendTime, Time serverReceiveTime, Time serv
 
 	Time result = Time(sumSeconds / 1000000, sumSeconds % 1000000);
 
-	return result;
+	return result;*/
 }
 
+/*
 Time SyncTime::SubstractTime(Time a, Time b) {
 	Time result = a;
 	int32_t micro = a.Microseconds - b.Microseconds;
@@ -130,9 +139,10 @@ Time SyncTime::SubstractTime(Time a, Time b) {
 		result.Microseconds = micro;
 
 	}
+
 	result.Seconds -= b.Seconds;
 	return result;
-}
+}*/
 
 void SyncTime::CalcTime(uint32_t seconds, TimeParameters &tm) {
 

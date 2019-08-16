@@ -69,11 +69,14 @@
     <ClInclude Include="TimeSynchronization\Time.h">
       <Filter>Header Files\TimeSynchronization</Filter>
     </ClInclude>
+    <ClInclude Include="Service\PinController.h">
+      <Filter>Header Files\Service</Filter>
+    </ClInclude>
     <ClInclude Include="RLCLedController\RLCLedController.h">
       <Filter>Header Files\RLCLedController</Filter>
     </ClInclude>
-    <ClInclude Include="Service\PinController.h">
-      <Filter>Header Files\Service</Filter>
+    <ClInclude Include="RLCLedController\LaunchController.h">
+      <Filter>Header Files\RLCLedController</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -100,6 +103,9 @@
     </ClCompile>
     <ClCompile Include="Service\PinController.cpp">
       <Filter>Source Files\Service</Filter>
+    </ClCompile>
+    <ClCompile Include="RLCLedController\LaunchController.cpp">
+      <Filter>Source Files\RLCLedController</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

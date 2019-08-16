@@ -8,7 +8,8 @@ RLCMessage::RLCMessage()
 	ClientNumber = 0;
 	ClientState = ClientStateEnum::NotSet;
 	IP = IPAddress(0, 0, 0, 0);
-	StartTime = Time();
+	LaunchTime = Time();
+	SendTime = Time();
 }
 
 RLCMessage::~RLCMessage()
@@ -40,10 +41,16 @@ uint8_t* RLCMessage::GetBytes()
 	messageBuffer[byteIndex++] = (uint8_t)(IP[2]);
 	messageBuffer[byteIndex++] = (uint8_t)(IP[3]);
 
-	StartTime.SetSecondsTo(messageBuffer, byteIndex);
+	LaunchTime.SetSecondsTo(messageBuffer, byteIndex);
 	byteIndex += 4;
 	
-	StartTime.SetSecondFractionsTo(messageBuffer, byteIndex);
+	LaunchTime.SetSecondFractionsTo(messageBuffer, byteIndex);
+	byteIndex += 4;
+
+	SendTime.SetSecondsTo(messageBuffer, byteIndex);
+	byteIndex += 4;
+
+	SendTime.SetSecondFractionsTo(messageBuffer, byteIndex);
 	byteIndex += 4;
 
 	return messageBuffer;

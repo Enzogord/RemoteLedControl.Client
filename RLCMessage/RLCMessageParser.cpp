@@ -46,7 +46,11 @@ RLCMessage RLCMessageParser::Parse(uint8_t messageBuffer[])
 	message.IP = IPAddress(messageBuffer[index++], messageBuffer[index++], messageBuffer[index++], messageBuffer[index++]);
 	
 	//TimeFrame
-	message.StartTime = Time(messageBuffer, index);
+	message.LaunchTime = Time(messageBuffer, index);
+	index += 8;
+
+	//TimeFrame
+	message.SendTime = Time(messageBuffer, index);
 	index += 8;
 
 	return message;

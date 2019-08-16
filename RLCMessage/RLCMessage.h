@@ -21,7 +21,8 @@ public:
 	uint16_t ClientNumber;
 	ClientStateEnum ClientState;
 	IPAddress IP;
-	Time StartTime;
+	Time LaunchTime;
+	Time SendTime;
 
 	uint8_t* GetBytes();
 
