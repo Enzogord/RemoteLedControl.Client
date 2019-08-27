@@ -75,9 +75,6 @@
     <ClInclude Include="RLCLedController\RLCLedController.h">
       <Filter>Header Files\RLCLedController</Filter>
     </ClInclude>
-    <ClInclude Include="RLCLedController\LaunchController.h">
-      <Filter>Header Files\RLCLedController</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RLCSetting.cpp">
@@ -103,9 +100,6 @@
     </ClCompile>
     <ClCompile Include="Service\PinController.cpp">
       <Filter>Source Files\Service</Filter>
-    </ClCompile>
-    <ClCompile Include="RLCLedController\LaunchController.cpp">
-      <Filter>Source Files\RLCLedController</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

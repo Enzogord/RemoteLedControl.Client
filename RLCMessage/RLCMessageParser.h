@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RLCMessage.h"
+#include "../TimeSynchronization/SyncTime.h"
 
 class RLCMessageParser
 {

@@ -2,9 +2,7 @@
 #include "FastLED.h"
 #include <SD.h>
 #include "../Service/PinController.h"
-#include "TimeSynchronization/Time.h"
-#include "TimeSynchronization/SyncTime.h"
-//#include "LaunchController.h"
+#include "../TimeSynchronization/SyncTime.h"
 
 typedef void (*FastLedInitialization)();
 typedef void (*ReopenFile)();
@@ -37,10 +35,12 @@ public:
 	int* PWMChannels;
 	LEDControllerStatuses Status;
 	boolean IsInitialized;
-	unsigned int FrameBytes;	
+	unsigned int FrameBytes;
 
-	RLCLedController();
-	RLCLedController(SyncTime &syncTime);
+	//врем€ одного кадра, мс (по умолчанию 50 мс)
+	uint32_t frameTime = 50;
+
+	RLCLedController(SyncTime *syncTime);
 	~RLCLedController();
 
 	void Initialize(FastLedInitialization initializerMethod, File &cyclogrammFile, ReopenFile reopenFileMethod);
@@ -57,8 +57,7 @@ private:
 	File cyclogrammFile;
 	boolean showNext = false;
 
-	//врем€ одного кадра, мс (по умолчанию 50 мс)
-	uint32_t frameTime = 50;
+	SyncTime* timeProvider;	
 
 	// Ќомер кадр с которого будет начато воспроизведение
 	//unsigned long launchFrame;
@@ -73,12 +72,15 @@ private:
 	void ResetPosition();
 
 	// ”станавливает врем€ циклограммы с которого необходимо начать воспроизведение
-	void SetLaunchTime(Time &launchFromTime, Time &lauchTime);
+	bool SetLaunchTime(Time &launchFromTime, Time &lauchTime);
 	
 	// ѕолучение индекса байта в файле дл€ текущего кадра
 	inline uint64_t GetFrameBytePosition(uint64_t framePos);
 
 	// ѕолучение текущего времени воспроизведени€ циклограммы
 	Time GetCurrentPlayTime();
+
+	// ѕолучение длины циклограммы
+	Time GetCyclogrammLength();
 };
 

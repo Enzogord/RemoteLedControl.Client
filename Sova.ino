@@ -43,7 +43,7 @@ RLCSetting rlcSettings;
 RLCMessageParser messageParser;
 RLCMessageFactory messageFactory;
 boolean connectionInProgress = false;
-RLCLedController rlcLedController;
+RLCLedController rlcLedController = RLCLedController(&syncTime);
 
 void Initializations() 
 {
@@ -215,8 +215,8 @@ void OnReceiveMessage(RLCMessage &message)
 	case MessageTypeEnum::PlayFrom:
 		Serial.println("Receive PlayFrom message");
 		Serial.print("Now: "); Serial.println(syncTime.Now().GetSeconds());
-		Serial.print("Received time: "); Serial.println(message.LaunchTime.GetSeconds());
-		rlcLedController.Play();
+		Serial.print("Received time: "); Serial.println(message.PlayFromTime.GetSeconds());
+		rlcLedController.PlayFrom(message.PlayFromTime, message.SendTime);
 		break;
 	case MessageTypeEnum::RequestClientInfo:
 		responseMessage = messageFactory.SendClientInfo(clientState);
@@ -248,23 +248,6 @@ void NextFrameHandler()
 void setup()
 {
 	Initializations();
-
-	/*Time time1 = Time(2, 500000);
-	Time time2 = Time(2, 500000);
-	Serial.print("Is equal: "); Serial.println(time1 == time2);
-	Serial.print("Is not equal: "); Serial.println(time1 != time2);
-	Serial.print("Is greater: "); Serial.println(time1 > time2);
-	Serial.print("Is lesser: "); Serial.println(time1 < time2);
-	Serial.print("Is greater or equal: "); Serial.println(time1 >= time2);
-	Serial.print("Is lesser or equal: "); Serial.println(time1 <= time2);
-
-	Time resultTime = time1 + time2;
-	Serial.print("Sum: "); Serial.print(resultTime.GetSeconds()); Serial.print("sec, "); Serial.print(resultTime.GetMicroseconds()); Serial.println("mcs");*/
-
-
-
-	/*Time resultTime = syncTime.SubstractTime(time1, time2);
-	Serial.print("Result time: "); Serial.print(resultTime.Seconds); Serial.print("sec, "); Serial.print(resultTime.Microseconds); Serial.println("mcs");*/
 
 	settingFile = SD.open("set.txt", FILE_READ);
 	rlcSettings.ReadSetting(settingFile);
@@ -322,7 +305,6 @@ void setup()
 void loop(void) {
 	ReadTCPConnection();	
 	rlcLedController.Show();
-	Serial.print("Now: "); Serial.print(syncTime.Now().GetSeconds()); Serial.print("sec "); Serial.print(syncTime.Now().GetMicroseconds()); Serial.println("mcs");
 }
 
 void WiFiConnect() {

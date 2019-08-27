@@ -25,10 +25,10 @@ Time::Time(uint8_t sourceArray[], int startIndex)
 
 	TotalMicroseconds = (uint64_t)(((uint64_t)seconds) * 1000000ULL);
 	uint32_t fractions;
-	fractions = (uint32_t)sourceArray[startIndex] << 24;
-	fractions |= (uint32_t)sourceArray[startIndex+1] << 16;
-	fractions |= (uint32_t)sourceArray[startIndex+1] << 8;
-	fractions |= (uint32_t)sourceArray[startIndex+1];
+	fractions = (uint32_t)sourceArray[startIndex+4] << 24;
+	fractions |= (uint32_t)sourceArray[startIndex+5] << 16;
+	fractions |= (uint32_t)sourceArray[startIndex+6] << 8;
+	fractions |= (uint32_t)sourceArray[startIndex+7];
 	uint64_t microseconds = (uint64_t)((uint64_t)fractions) * 1000000ULL / 0x100000000LL;
 	TotalMicroseconds += microseconds;
 }
@@ -46,14 +46,6 @@ uint32_t Time::GetMicroseconds()
 {
 	return (uint32_t)(TotalMicroseconds % 1000000);
 }
-
-/*
-void Time::AddMicroseconds(uint32_t microseconds)
-{
-	uint32_t totalMicros = Microseconds + microseconds;
-	Seconds += totalMicros / 1000000;
-	Microseconds = totalMicros % 1000000;
-}*/
 
 void Time::SetSecondsTo(uint8_t destArray[], int startIndex)
 {

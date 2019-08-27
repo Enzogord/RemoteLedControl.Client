@@ -1,14 +1,10 @@
 #include "RLCLedController.h"
 
-RLCLedController::RLCLedController()
-{
-}
-
-RLCLedController::RLCLedController(SyncTime &syncTime)
+RLCLedController::RLCLedController(SyncTime *syncTime)
 {
 	IsInitialized = false;
 	Status = LEDControllerStatuses::Stoped;
-	//launchController = LaunchController(syncTime, *this);
+	timeProvider = syncTime;
 }
 
 RLCLedController::~RLCLedController()
@@ -20,7 +16,8 @@ void RLCLedController::Initialize(FastLedInitialization initializerMethod, File 
 	RLCLedController::reopenFileMethod = reopenFileMethod;
 	RLCLedController::cyclogrammFile = cyclogrammFile;
 	initializerMethod();
-	FrameBytes = (LedCount * 3) + *PWMChannels;
+
+	FrameBytes = (LedCount * 3) + PWMChannelCount;
 	IsInitialized = true;
 }
 
@@ -43,9 +40,11 @@ void RLCLedController::PlayFrom(Time &launchFromTime, Time &lauchTime)
 	{
 		return;
 	}
-	SetLaunchTime(launchFromTime, lauchTime);
-	Status = LEDControllerStatuses::Played;
-	Serial.println("LED controller start play.");
+	if(SetLaunchTime(launchFromTime, lauchTime)) 
+	{
+		Status = LEDControllerStatuses::Played;
+		Serial.println("LED controller start play.");
+	}	
 }
 
 void RLCLedController::Stop()
@@ -94,17 +93,15 @@ void RLCLedController::Show()
 		{
 			unsigned long a1 = millis();
 			for(unsigned int i = 0; i < LedCount; i++)
-			{				
+			{
 				LedArray[i].r = cyclogrammFile.read();
 				LedArray[i].g = cyclogrammFile.read();
 				LedArray[i].b = cyclogrammFile.read();
 			}
 
-			Serial.print("Frame generation time: "); Serial.println(millis() - a1);
 			for(unsigned int i = 0; i < PWMChannelCount; i++)
 			{
-				uint8_t pwmOutput = cyclogrammFile.read();				
-				Serial.print("PWM output: "); Serial.println(pwmOutput);
+				uint8_t pwmOutput = cyclogrammFile.read();
 				PinWrite(PWMChannels[i], pwmOutput);
 			}
 			FastLED.show();
@@ -115,7 +112,7 @@ void RLCLedController::Show()
 			Stop();
 			Serial.println("Cyclogramm ended. LED controller stoped.");
 		}
-		
+
 		showNext = false;
 	}
 }
@@ -126,7 +123,6 @@ void RLCLedController::NextFrame()
 	{
 		return;
 	}
-	Serial.print("Status: "); Serial.println(ToString(Status));
 	if(Status == LEDControllerStatuses::Played)
 	{
 		if(showNext)
@@ -160,18 +156,32 @@ void RLCLedController::ResetPosition()
 	framePosition = 0;
 }
 
-void RLCLedController::SetLaunchTime(Time &launchFromTime, Time &lauchTime)
+bool RLCLedController::SetLaunchTime(Time &launchFromTime, Time &launchTime)
 {
-	Time now = syncTime.Now();
-	Time correctedLaunchTime = (now - lauchTime) + launchFromTime;
-	Time currentPlayTime = GetCurrentPlayTime();
-
-	if(correctedLaunchTime < currentPlayTime)
+	Time now = (*timeProvider).Now();
+	Time cyclogrammLength = GetCyclogrammLength();
+	if(launchTime <= now)
 	{
-		correctedLaunchTime += (currentPlayTime - correctedLaunchTime);
+		if(((now - launchTime) + launchFromTime) >= cyclogrammLength)
+		{
+			return false;
+		}
 	}
-	uint64_t launchFrame = correctedLaunchTime.TotalMicroseconds / frameTime;
+	else
+	{
+		Time corTime = (now - launchTime) + launchFromTime;
+		// корректировка если рассинхронизация произошла так что время отправки станет больше чем время получения
+		// в пределах 1 сек, с учетом возможних задержек на время передачи
+		if(corTime <= 0 || corTime >= cyclogrammLength || (launchTime - now).TotalMicroseconds > 1000000)
+		{
+			return false;
+		}
+	}
+
+	Time correctedLaunchTime = (now - launchTime) + launchFromTime;
+	uint64_t launchFrame = (correctedLaunchTime.TotalMicroseconds / 1000) / frameTime;
 	SetPosition(launchFrame);
+	return true;
 }
 
 inline uint64_t RLCLedController::GetFrameBytePosition(uint64_t framePos)
@@ -182,4 +192,9 @@ inline uint64_t RLCLedController::GetFrameBytePosition(uint64_t framePos)
 Time RLCLedController::GetCurrentPlayTime()
 {
 	return Time((uint64_t)framePosition * (uint64_t)frameTime * (uint64_t)1000);
+}
+
+Time RLCLedController::GetCyclogrammLength()
+{
+	return Time((cyclogrammFile.size() / FrameBytes) * frameTime * 1000);
 }
