@@ -47,6 +47,32 @@ void RLCLedController::PlayFrom(Time &launchFromTime, Time &lauchTime)
 	}	
 }
 
+void RLCLedController::Rewind(Time &launchFromTime, Time &lauchTime, ClientStateEnum &clientState)
+{
+	if(!IsInitialized)
+	{
+		return;
+	}
+	if(SetLaunchTime(launchFromTime, lauchTime))
+	{
+		Serial.print("Received status: "); Serial.println(ToString(clientState));
+		switch(clientState)
+		{
+			case ClientStateEnum::Playing:
+				Status = LEDControllerStatuses::Played;
+				break;
+			case ClientStateEnum::Paused:
+				Status = LEDControllerStatuses::Paused;
+				showNext = true;
+				cyclogrammFile.seek(cyclogrammFile.position() - FrameBytes);
+				Show();
+				break;
+			default:
+				return;
+		}
+	}
+}
+
 void RLCLedController::Stop()
 {
 	if(!IsInitialized)

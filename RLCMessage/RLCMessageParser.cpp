@@ -38,9 +38,9 @@ RLCMessage RLCMessageParser::Parse(uint8_t messageBuffer[])
 	index += 2; //занимает 2 байта
 
 	//ClientState
-	//Not implemented
-	//Нет необходимоти в информации о клиенте для входящего сообщения
-	index++; //занимает 1 байт
+	if(!TryParseClientState(message.ClientState, messageBuffer[index++]))
+	{
+	}
 
 	//IPAddress
 	message.IP = IPAddress(messageBuffer[index++], messageBuffer[index++], messageBuffer[index++], messageBuffer[index++]);
@@ -95,6 +95,9 @@ bool RLCMessageParser::TryParseMessageType(MessageTypeEnum & messageType, uint8_
 		case(6):
 			messageType = MessageTypeEnum::RequestClientInfo;
 			return true;
+		case(7):
+			messageType = MessageTypeEnum::Rewind;
+			return true;
 
 			//to server
 		case(100):
@@ -106,5 +109,23 @@ bool RLCMessageParser::TryParseMessageType(MessageTypeEnum & messageType, uint8_
 		default:
 			messageType = MessageTypeEnum::NotSet;
 			return false;
+	}
+}
+bool RLCMessageParser::TryParseClientState(ClientStateEnum & clientState, uint8_t value)
+{
+	switch(value)
+	{
+	case(1):
+		clientState = ClientStateEnum::Playing;
+		return true;
+	case(2):
+		clientState = ClientStateEnum::Stoped;
+		return true;
+	case(3):
+		clientState = ClientStateEnum::Paused;
+		return true;
+	default:
+		clientState = ClientStateEnum::NotSet;
+		return false;
 	}
 }

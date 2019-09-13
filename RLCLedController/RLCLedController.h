@@ -3,6 +3,7 @@
 #include <SD.h>
 #include "../Service/PinController.h"
 #include "../TimeSynchronization/SyncTime.h"
+#include "../RLCMessage/RLCEnums.h"
 
 typedef void (*FastLedInitialization)();
 typedef void (*ReopenFile)();
@@ -47,6 +48,7 @@ public:
 
 	void Play();
 	void PlayFrom(Time &launchFromTime, Time &lauchTime);
+	void Rewind(Time &launchFromTime, Time &lauchTime, ClientStateEnum &clientState);
 	void Stop();
 	void Pause();
 	void Show();

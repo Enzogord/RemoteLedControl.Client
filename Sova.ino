@@ -27,7 +27,6 @@
 
 Ticker ticker;
 
-//CRGB *ledArray;
 File cyclogrammFile;
 File settingFile;
 IPAddress broadcastAddress;
@@ -217,6 +216,10 @@ void OnReceiveMessage(RLCMessage &message)
 		Serial.print("Now: "); Serial.println(syncTime.Now().GetSeconds());
 		Serial.print("Received time: "); Serial.println(message.PlayFromTime.GetSeconds());
 		rlcLedController.PlayFrom(message.PlayFromTime, message.SendTime);
+		break;
+	case MessageTypeEnum::Rewind:
+		Serial.println("Receive Rewind message");
+		rlcLedController.Rewind(message.PlayFromTime, message.SendTime, message.ClientState);
 		break;
 	case MessageTypeEnum::RequestClientInfo:
 		responseMessage = messageFactory.SendClientInfo(clientState);
