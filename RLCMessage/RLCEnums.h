@@ -36,7 +36,8 @@ enum class MessageTypeEnum
 
 	//to server
 	ClientInfo = 100,
-	RequestServerIp = 101
+	RequestServerIp = 101,
+	BatteryCharge = 102
 };
 
 inline const char* ToString(MessageTypeEnum clientState)
@@ -53,6 +54,7 @@ inline const char* ToString(MessageTypeEnum clientState)
 	case MessageTypeEnum::Rewind:   return "Rewind";
 	case MessageTypeEnum::ClientInfo:   return "ClientInfo";
 	case MessageTypeEnum::RequestServerIp:   return "RequestServerIp";
+	case MessageTypeEnum::BatteryCharge:   return "BatteryCharge";
 	default:      return "NotSet";
 	}
 }

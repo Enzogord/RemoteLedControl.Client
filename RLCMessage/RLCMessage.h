@@ -23,6 +23,7 @@ public:
 	IPAddress IP;
 	Time PlayFromTime;
 	Time SendTime;
+	uint16_t BatteryCharge;
 
 	uint8_t* GetBytes();
 

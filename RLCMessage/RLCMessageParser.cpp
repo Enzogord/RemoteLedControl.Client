@@ -53,6 +53,11 @@ RLCMessage RLCMessageParser::Parse(uint8_t messageBuffer[])
 	message.SendTime = Time(messageBuffer, index);
 	index += 8;
 
+	//BatteryCharge
+	//Not implemented
+	//Нет необходимоти в уровне заряда клиента для входящего сообщения
+	index += 2; //занимает 2 байта
+
 	return message;
 }
 
@@ -105,6 +110,9 @@ bool RLCMessageParser::TryParseMessageType(MessageTypeEnum & messageType, uint8_
 			return true;
 		case(101):
 			messageType = MessageTypeEnum::RequestServerIp;
+			return true;
+		case(102):
+			messageType = MessageTypeEnum::BatteryCharge;
 			return true;
 		default:
 			messageType = MessageTypeEnum::NotSet;

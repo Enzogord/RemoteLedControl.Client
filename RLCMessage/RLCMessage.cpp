@@ -53,5 +53,8 @@ uint8_t* RLCMessage::GetBytes()
 	SendTime.SetSecondFractionsTo(messageBuffer, byteIndex);
 	byteIndex += 4;
 
+	messageBuffer[byteIndex++] = (uint8_t)(BatteryCharge >> 8);
+	messageBuffer[byteIndex++] = (uint8_t)(BatteryCharge >> 0);
+
 	return messageBuffer;
 }

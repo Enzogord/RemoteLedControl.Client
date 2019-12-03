@@ -43,10 +43,12 @@ RLCMessageParser messageParser;
 RLCMessageFactory messageFactory;
 boolean connectionInProgress = false;
 RLCLedController rlcLedController = RLCLedController(&syncTime);
+bool sendBatteryCharge;
 
 void Initializations() 
 {
 	Serial.begin(115200);
+	pinMode(A0, INPUT);
 	clientState = ClientStateEnum::Stoped;
 	//syncTime.LastTime = Time(63681897600, 0); //01.01.2019 00:00:00:000000
 
@@ -128,7 +130,7 @@ void WaitingTimeSynchronization(IPAddress &ipAddress, uint16_t port)
 	udp.stopAll();
 }
 
-//ожидание успешного TCP соеднинения
+//ожидание успешного TCP соединения
 void WaitingConnectToRLCServer(IPAddress &ipAddress, uint16_t port)
 {
 	Serial.print("Waiting connect to "); Serial.print(ipAddress); Serial.print(":"); Serial.println(port);
@@ -149,7 +151,7 @@ void WaitingConnectToRLCServer(IPAddress &ipAddress, uint16_t port)
 int TryConnectToRLCServer(IPAddress &ipAddress, uint16_t port, unsigned long timeout)
 {
 	int tcpConnected = 0;
-	//пересоздаем клиент, потому что при разрыве связи не может заного подключиться
+	//пересоздаем клиент, потому что при разрыве связи не может заново подключиться
 	tcpClient = WiFiClient();
 	Serial.println("Connecting to TCP server");
 	tcpClient.setTimeout(timeout);
@@ -231,7 +233,9 @@ void OnReceiveMessage(RLCMessage &message)
 }
 
 void SendMessage(RLCMessage &message) {
-	tcpClient.write(message.GetBytes(), RLC_MESSAGE_LENGTH);
+	uint8_t *buffer =  message.GetBytes();
+	tcpClient.write(buffer, RLC_MESSAGE_LENGTH);
+	delete(buffer);
 }
 
 void OpenCyclogrammFile()
@@ -247,6 +251,16 @@ void NextFrameHandler()
 {
 	rlcLedController.NextFrame();
 }
+
+void BatteryChargeHandler()
+{
+	if(tcpClient.connected())
+	{
+		sendBatteryCharge = true;
+	}
+	
+}
+
 
 void setup()
 {
@@ -303,11 +317,26 @@ void setup()
 	WaitingConnectToRLCServer(serverIP, rlcSettings.UDPPort);
 	DefaultLight();
 	ticker.attach_ms(rlcLedController.frameTime, NextFrameHandler);
+	ticker.attach_ms(1000, BatteryChargeHandler);
 }
 
 void loop(void) {
-	ReadTCPConnection();	
+	SendBatteryCharge();
+	ReadTCPConnection();
 	rlcLedController.Show();
+}
+
+void SendBatteryCharge()
+{
+	if(sendBatteryCharge && tcpClient.connected())
+	{
+		uint16_t chargeValue = (uint16_t)analogRead(A0);
+		Serial.print("Send battery charge level: "); Serial.println(chargeValue);
+		RLCMessage batteryChargeMessage = messageFactory.BatteryCharge(clientState, chargeValue);
+		
+		SendMessage(batteryChargeMessage);
+		sendBatteryCharge = false;
+	}	
 }
 
 void WiFiConnect() {
