@@ -182,31 +182,48 @@ void RLCLedController::ResetPosition()
 	framePosition = 0;
 }
 
-bool RLCLedController::SetLaunchTime(Time &launchFromTime, Time &launchTime)
+bool RLCLedController::SetLaunchTime(Time &launchFromTime, Time &sendTime)
 {
 	Time now = (*timeProvider).Now();
 	Time cyclogrammLength = GetCyclogrammLength();
-	if(launchTime <= now)
+	Time currentPlayTime = GetCurrentPlayTime();
+	Serial.print("currentPlayTime"); Serial.println((int)(currentPlayTime.TotalMicroseconds / 1000));
+	Time deltaTime = (now - sendTime);
+	if (deltaTime <= 0)
 	{
-		if(((now - launchTime) + launchFromTime) >= cyclogrammLength)
-		{
-			return false;
-		}
+		deltaTime = 0;
+	}
+
+	Time corTime;
+	if(currentPlayTime >= launchFromTime)
+	{
+		corTime = launchFromTime + deltaTime;
 	}
 	else
 	{
-		Time corTime = (now - launchTime) + launchFromTime;
-		// корректировка если рассинхронизация произошла так что время отправки станет больше чем время получения
-		// в пределах 1 сек, с учетом возможних задержек на время передачи
-		if(corTime <= 0 || corTime >= cyclogrammLength || (launchTime - now).TotalMicroseconds > 1000000)
+		Time currentWithDelta = currentPlayTime + deltaTime;
+		if(currentWithDelta > launchFromTime)
 		{
-			return false;
+			corTime = currentWithDelta;
+		}
+		else
+		{
+			corTime = launchFromTime;
 		}
 	}
 
-	Time correctedLaunchTime = (now - launchTime) + launchFromTime;
-	uint64_t launchFrame = (correctedLaunchTime.TotalMicroseconds / 1000) / frameTime;
-	SetPosition(launchFrame);
+	if (corTime >= cyclogrammLength)
+	{
+		int corTimeMcs = (int)(corTime.TotalMicroseconds / 1000);
+		Serial.print("corTime"); Serial.println(corTimeMcs);
+		Serial.print("cyclogrammLength"); Serial.println((int)(cyclogrammLength.TotalMicroseconds/1000));
+		Serial.println("out of cyclogramm!!!!!!!!!!!");
+		return false;
+	}
+	uint64_t launchFrame = (corTime.TotalMicroseconds / 1000) / frameTime;
+	Serial.print("corTime:"); Serial.println((int)(corTime.TotalMicroseconds / 1000));
+	Serial.print("launchFrame:"); Serial.println((int)(launchFrame+1));
+	SetPosition(launchFrame + 1);
 	return true;
 }
 
