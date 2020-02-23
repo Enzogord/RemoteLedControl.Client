@@ -186,8 +186,22 @@ bool RLCLedController::SetLaunchTime(Time &launchFromTime, Time &sendTime)
 {
 	Time now = (*timeProvider).Now();
 	Time cyclogrammLength = GetCyclogrammLength();
-	Time currentPlayTime = GetCurrentPlayTime();
-	Serial.print("currentPlayTime"); Serial.println((int)(currentPlayTime.TotalMicroseconds / 1000));
+	//Time currentPlayTime = GetCurrentPlayTime();
+	Serial.print("Time now: "); Serial.print(now.GetSeconds()); Serial.print("sec, "); Serial.print(now.GetMicroseconds()); Serial.println("us");
+	Serial.print("Send time: "); Serial.print(sendTime.GetSeconds()); Serial.print("sec, "); Serial.print(sendTime.GetMicroseconds()); Serial.println("us");
+	//Serial.print("currentPlayTime"); Serial.println((int)(currentPlayTime.TotalMicroseconds / 1000));
+	
+	Time corTime;
+	if(now > sendTime)
+	{
+		corTime = launchFromTime + (now - sendTime);
+	}
+	else
+	{
+		corTime = launchFromTime - (sendTime - now);
+	}
+
+	/*
 	Time deltaTime = (now - sendTime);
 	if (deltaTime <= 0)
 	{
@@ -210,7 +224,7 @@ bool RLCLedController::SetLaunchTime(Time &launchFromTime, Time &sendTime)
 		{
 			corTime = launchFromTime;
 		}
-	}
+	}*/
 
 	if (corTime >= cyclogrammLength)
 	{
@@ -222,7 +236,7 @@ bool RLCLedController::SetLaunchTime(Time &launchFromTime, Time &sendTime)
 	}
 	uint64_t launchFrame = (corTime.TotalMicroseconds / 1000) / frameTime;
 	Serial.print("corTime:"); Serial.println((int)(corTime.TotalMicroseconds / 1000));
-	Serial.print("launchFrame:"); Serial.println((int)(launchFrame+1));
+	Serial.print("launchFrame:"); Serial.println((int)(launchFrame + 1));
 	SetPosition(launchFrame + 1);
 	return true;
 }

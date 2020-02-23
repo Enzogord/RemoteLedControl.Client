@@ -25,7 +25,8 @@
 #define ANALOG_HIGH 255
 #define ANALOG_LOW 0
 
-Ticker ticker;
+Ticker tickerFrame;
+Ticker tickerBattery;
 
 File cyclogrammFile;
 File settingFile;
@@ -124,9 +125,7 @@ void WaitingTimeSynchronization(IPAddress &ipAddress, uint16_t port)
 	FastLED.showColor(CRGB::Green);
 	udp.begin(port);
 	syncTime.Init(udp);
-	while(!syncTime.SynchronizeTime(ipAddress, port))
-	{
-	}
+	syncTime.SynchronizeTimeMultiple(serverIP, NTP_PORT, 30);	
 	udp.stopAll();
 }
 
@@ -214,14 +213,10 @@ void OnReceiveMessage(RLCMessage &message)
 		rlcLedController.Stop();
 		break;
 	case MessageTypeEnum::PlayFrom:
-		ShiftFrameTicker(message.SendTime);
-		Serial.println("Receive PlayFrom message");
-		Serial.print("Now: "); Serial.println(syncTime.Now().GetSeconds());
-		Serial.print("Received time: "); Serial.println(message.PlayFromTime.GetSeconds());
+		Serial.println("--- Receive PlayFrom message ---");
 		rlcLedController.PlayFrom(message.PlayFromTime, message.SendTime);
 		break;
 	case MessageTypeEnum::Rewind:
-		ShiftFrameTicker(message.SendTime);
 		Serial.println("Receive Rewind message");
 		rlcLedController.Rewind(message.PlayFromTime, message.SendTime, message.ClientState);
 		break;
@@ -233,38 +228,6 @@ void OnReceiveMessage(RLCMessage &message)
 		break;
 	}
 }
-
-void ShiftFrameTicker(Time relativeTime) {
-	Time now = syncTime.Now();
-	int64_t deltaMcs = (now - relativeTime).TotalMicroseconds;
-	int64_t deltaMs = deltaMcs / 1000;
-	Serial.print("deltaMs: "); Serial.println((int)deltaMs);
-	int32_t frames;
-	if(deltaMs > rlcLedController.frameTime)
-	{
-		frames = ((int32_t)deltaMs / (int32_t)rlcLedController.frameTime) + 1;
-	}
-	else
-	{
-		frames = 1;
-	}
-	Serial.print("frames: "); Serial.println(frames);
-
-	int64_t shiftMicrosecond = frames * rlcLedController.frameTime * 1000;
-	int64_t realShift = (shiftMicrosecond - deltaMcs)/1000;
-
-	ticker.detach();
-	Serial.print("ticker.once_ms");
-	ticker.once_ms(realShift, StartFrameTicker);
-}
-
-void StartFrameTicker()
-{
-	ticker.detach();
-	Serial.print("ticker.attach_ms");
-	ticker.attach_ms(rlcLedController.frameTime, NextFrameHandler);
-}
-
 
 void SendMessage(RLCMessage &message) {
 	uint8_t *buffer =  message.GetBytes();
@@ -349,13 +312,14 @@ void setup()
 	
 	WiFiConnect();
 	WaitingServerIPAddress();
+
 	WaitingTimeSynchronization(serverIP, NTP_PORT);
-	WaitingConnectToRLCServer(serverIP, rlcSettings.UDPPort);
-	WaitingConnectToRLCServer(serverIP, rlcSettings.UDPPort);
+	
+
 	WaitingConnectToRLCServer(serverIP, rlcSettings.UDPPort);
 	DefaultLight();
-	ticker.attach_ms(rlcLedController.frameTime, NextFrameHandler);
-	ticker.attach_ms(1000, BatteryChargeHandler);
+	tickerFrame.attach_ms(rlcLedController.frameTime, NextFrameHandler);
+	tickerBattery.attach_ms(1000, BatteryChargeHandler);
 }
 
 void loop(void) {
@@ -369,7 +333,7 @@ void SendBatteryCharge()
 	if(sendBatteryCharge && tcpClient.connected())
 	{
 		uint16_t chargeValue = (uint16_t)analogRead(A0);
-		Serial.print("Send battery charge level: "); Serial.println(chargeValue);
+		//Serial.print("Send battery charge level: "); Serial.println(chargeValue);
 		RLCMessage batteryChargeMessage = messageFactory.BatteryCharge(clientState, chargeValue);
 		
 		SendMessage(batteryChargeMessage);

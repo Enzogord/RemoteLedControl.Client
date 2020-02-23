@@ -28,12 +28,15 @@ public:
 
 	uint32_t LastMicros;
 
-	int SynchronizeTime(IPAddress &address, uint16_t port);
+	Time RequestAndGetTimeShift(IPAddress& address, uint16_t port);
+	int SynchronizeTimeWithoutAverageSet(IPAddress& address, uint16_t port);
+	int SynchronizeTimeMultiple(IPAddress& address, uint16_t port, uint8_t syncCount);
+	Time GetTimeShift(Time sendTime, Time serverReceiveTime, Time serverSendTime, Time receiveTime);
 
-	Time GetCorrectedTime(Time sendTime, Time serverReceiveTime, Time serverSendTime, Time receiveTime);
-
-	//Time SubstractTime(Time a, Time b);
+	Time GetCorrectedTimeWithoutAverageSet(Time sendTime, Time serverReceiveTime, Time serverSendTime, Time receiveTime);
 
 	void CalcTime(uint32_t seconds, TimeParameters &tm);
+private:
+	int* ntpDeltas;
 };
 
