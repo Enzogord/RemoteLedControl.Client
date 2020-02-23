@@ -19,7 +19,7 @@
 #define SERVER_IP_TIMEOUT 2000UL
 #define NTP_PORT 11011
 //таймаут ожидания успешного соединения в рабочем цикле, мс
-#define TCP_CONNECTION_TIMEOUT_ON_WORK 10
+#define TCP_CONNECTION_TIMEOUT_ON_WORK 2000UL
 
 //значения HIGH и LOW специально инвертированы из-за оборудования
 #define ANALOG_HIGH 255
