@@ -156,7 +156,12 @@ void RLCLedController::NextFrame()
 			Serial.println("!!!!!!!!! FATAL ERROR. FRAME OVERLAY!!!!!!!!!!!, NEED INCREASE FRAME TIME OR REDUCE DATA VOLUME");
 		}
 		showNext = true;
-		framePosition += FrameBytes;
+		framePosition ++;
+		Time now = (*timeProvider).Now();
+		Serial.print("Current frame: "); Serial.print(framePosition); Serial.print(", ");
+		Serial.print(now.GetSeconds()); Serial.print("sec, "); Serial.print(now.GetMicroseconds()); Serial.print("us");
+		Time curPlay = GetCurrentPlayTime();
+		Serial.print(curPlay.GetSeconds()); Serial.print("sec, "); Serial.print(curPlay.GetMicroseconds()); Serial.println("us");
 	}
 }
 
@@ -186,21 +191,45 @@ bool RLCLedController::SetLaunchTime(Time &launchFromTime, Time &sendTime)
 {
 	Time now = (*timeProvider).Now();
 	Time cyclogrammLength = GetCyclogrammLength();
+	uint32_t framesCount =  (cyclogrammFile.size() / FrameBytes);
 	//Time currentPlayTime = GetCurrentPlayTime();
 	Serial.print("Time now: "); Serial.print(now.GetSeconds()); Serial.print("sec, "); Serial.print(now.GetMicroseconds()); Serial.println("us");
 	Serial.print("Send time: "); Serial.print(sendTime.GetSeconds()); Serial.print("sec, "); Serial.print(sendTime.GetMicroseconds()); Serial.println("us");
+	Serial.print("Launch from time: "); Serial.print(launchFromTime.GetSeconds()); Serial.print("sec, "); Serial.print(launchFromTime.GetMicroseconds()); Serial.println("us");
 	//Serial.print("currentPlayTime"); Serial.println((int)(currentPlayTime.TotalMicroseconds / 1000));
 	
+	uint32_t targetFrame = GetFrameFromTime(launchFromTime);
+	Serial.print("targetFrame: "); Serial.println(targetFrame);
+	uint32_t correctedFrame;
 	Time corTime;
 	if(now > sendTime)
 	{
-		corTime = launchFromTime + (now - sendTime);
+		Time delta = now - sendTime;
+		correctedFrame = targetFrame + GetFrameFromTime(delta);
+		//corTime = launchFromTime + (now - sendTime);
 	}
 	else
 	{
-		corTime = launchFromTime - (sendTime - now);
+		Time delta = sendTime - now;
+		int32_t cf = (int32_t)targetFrame - (int32_t)GetFrameFromTime(delta);
+		if(cf < 0)
+		{
+			cf = 0;
+		}
+		correctedFrame = cf;
+		//corTime = launchFromTime - (sendTime - now);
 	}
 
+	correctedFrame++;
+
+	if (correctedFrame > framesCount)
+	{
+		Serial.println("out of cyclogramm!!!!!!!!!!!");
+		return false;
+	}
+	Serial.print("correctedFrame: ");Serial.println(correctedFrame);
+	SetPosition(correctedFrame);
+	return true;
 	/*
 	Time deltaTime = (now - sendTime);
 	if (deltaTime <= 0)
@@ -226,6 +255,8 @@ bool RLCLedController::SetLaunchTime(Time &launchFromTime, Time &sendTime)
 		}
 	}*/
 
+	/*
+	--------
 	if (corTime >= cyclogrammLength)
 	{
 		int corTimeMcs = (int)(corTime.TotalMicroseconds / 1000);
@@ -236,9 +267,14 @@ bool RLCLedController::SetLaunchTime(Time &launchFromTime, Time &sendTime)
 	}
 	uint64_t launchFrame = (corTime.TotalMicroseconds / 1000) / frameTime;
 	Serial.print("corTime:"); Serial.println((int)(corTime.TotalMicroseconds / 1000));
-	Serial.print("launchFrame:"); Serial.println((int)(launchFrame + 1));
-	SetPosition(launchFrame + 1);
-	return true;
+	Serial.print("launchFrame:"); Serial.println((int)(launchFrame+1));
+	SetPosition(launchFrame+1);
+	return true;*/
+}
+
+uint32_t RLCLedController::GetFrameFromTime(Time &time)
+{
+	return time.TotalMicroseconds / (uint32_t)1000 / frameTime;
 }
 
 inline uint64_t RLCLedController::GetFrameBytePosition(uint64_t framePos)

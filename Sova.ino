@@ -19,7 +19,7 @@
 #define SERVER_IP_TIMEOUT 2000UL
 #define NTP_PORT 11011
 //таймаут ожидания успешного соединения в рабочем цикле, мс
-#define TCP_CONNECTION_TIMEOUT_ON_WORK 2000UL
+#define TCP_CONNECTION_TIMEOUT_ON_WORK 10UL
 
 //значения HIGH и LOW специально инвертированы из-за оборудования
 #define ANALOG_HIGH 255
@@ -214,10 +214,12 @@ void OnReceiveMessage(RLCMessage &message)
 		break;
 	case MessageTypeEnum::PlayFrom:
 		Serial.println("--- Receive PlayFrom message ---");
+		CheckStartFrameTicker(message.SendTime);
 		rlcLedController.PlayFrom(message.PlayFromTime, message.SendTime);
 		break;
 	case MessageTypeEnum::Rewind:
 		Serial.println("Receive Rewind message");
+		CheckStartFrameTicker(message.SendTime);
 		rlcLedController.Rewind(message.PlayFromTime, message.SendTime, message.ClientState);
 		break;
 	case MessageTypeEnum::RequestClientInfo:
@@ -227,6 +229,41 @@ void OnReceiveMessage(RLCMessage &message)
 	default:
 		break;
 	}
+}
+
+bool frameTickerStarted;
+
+void CheckStartFrameTicker(Time sendTime) 
+{
+	if(frameTickerStarted)
+	{
+		return;
+	}
+
+	Time now = syncTime.Now();
+	int64_t deltaTime = now.TotalMicroseconds - sendTime.TotalMicroseconds;
+	if (deltaTime < 0)
+	{
+		deltaTime = 0;
+	}
+	deltaTime /= 1000;
+
+	uint32_t waitTime = rlcLedController.frameTime - (deltaTime % rlcLedController.frameTime);
+	Serial.print("Time now: "); Serial.print(now.GetSeconds()); Serial.print(" sec, "); Serial.print(now.GetMicroseconds()); Serial.println("us");
+	Serial.print("Send time: "); Serial.print(sendTime.GetSeconds()); Serial.print(" sec, "); Serial.print(sendTime.GetMicroseconds()); Serial.println("us");
+	Serial.print("deltaTime: "); Serial.print((uint32_t)deltaTime); Serial.println(" ms");
+	Serial.print("waitTime: "); Serial.print(waitTime); Serial.println("ms");
+
+
+	tickerFrame.detach();
+	tickerFrame.once_ms(waitTime, StartFrameTicker);
+	frameTickerStarted = true;
+}
+
+void StartFrameTicker()
+{
+	tickerFrame.detach();
+	tickerFrame.attach_ms(rlcLedController.frameTime, NextFrameHandler);
 }
 
 void SendMessage(RLCMessage &message) {
@@ -312,13 +349,10 @@ void setup()
 	
 	WiFiConnect();
 	WaitingServerIPAddress();
-
 	WaitingTimeSynchronization(serverIP, NTP_PORT);
-	
-
 	WaitingConnectToRLCServer(serverIP, rlcSettings.UDPPort);
-	DefaultLight();
-	tickerFrame.attach_ms(rlcLedController.frameTime, NextFrameHandler);
+
+	DefaultLight();	
 	tickerBattery.attach_ms(1000, BatteryChargeHandler);
 }
 

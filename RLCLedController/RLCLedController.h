@@ -84,5 +84,7 @@ private:
 
 	// Получение длины циклограммы
 	Time GetCyclogrammLength();
+
+	uint32_t GetFrameFromTime(Time& time);
 };
 
