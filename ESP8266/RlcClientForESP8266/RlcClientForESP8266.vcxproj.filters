@@ -1,0 +1,79 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="RLCMessage">
+      <UniqueIdentifier>{094004d8-6d15-466a-8de4-61449df2ed3d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RLCLedController">
+      <UniqueIdentifier>{46a990b9-55aa-4cb5-8dda-50d398fe1ead}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Service">
+      <UniqueIdentifier>{14234c39-533c-4e93-9bb3-4f2fe478eb15}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="TimeSynchronization">
+      <UniqueIdentifier>{84f8feac-3c5a-4f69-8898-7824fbd281b9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RLCSetting">
+      <UniqueIdentifier>{b7898c9c-74e2-46c1-b5da-2eaee7d5d87a}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="RlcClientForESP8266.ino" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="RLCSetting\RLCSetting.h">
+      <Filter>RLCSetting</Filter>
+    </ClInclude>
+    <ClInclude Include="TimeSynchronization\SyncTime.h">
+      <Filter>TimeSynchronization</Filter>
+    </ClInclude>
+    <ClInclude Include="TimeSynchronization\Time.h">
+      <Filter>TimeSynchronization</Filter>
+    </ClInclude>
+    <ClInclude Include="Service\PinController.h">
+      <Filter>Service</Filter>
+    </ClInclude>
+    <ClInclude Include="RLCLedController\RLCLedController.h">
+      <Filter>RLCLedController</Filter>
+    </ClInclude>
+    <ClInclude Include="RLCMessage\RLCEnums.h">
+      <Filter>RLCMessage</Filter>
+    </ClInclude>
+    <ClInclude Include="RLCMessage\RLCMessage.h">
+      <Filter>RLCMessage</Filter>
+    </ClInclude>
+    <ClInclude Include="RLCMessage\RLCMessageFactory.h">
+      <Filter>RLCMessage</Filter>
+    </ClInclude>
+    <ClInclude Include="RLCMessage\RLCMessageParser.h">
+      <Filter>RLCMessage</Filter>
+    </ClInclude>
+    <ClInclude Include="__vm\.RlcClientForESP8266.vsarduino.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="RLCSetting\RLCSetting.cpp">
+      <Filter>RLCSetting</Filter>
+    </ClCompile>
+    <ClCompile Include="TimeSynchronization\SyncTime.cpp">
+      <Filter>TimeSynchronization</Filter>
+    </ClCompile>
+    <ClCompile Include="TimeSynchronization\Time.cpp">
+      <Filter>TimeSynchronization</Filter>
+    </ClCompile>
+    <ClCompile Include="Service\PinController.cpp">
+      <Filter>Service</Filter>
+    </ClCompile>
+    <ClCompile Include="RLCLedController\RLCLedController.cpp">
+      <Filter>RLCLedController</Filter>
+    </ClCompile>
+    <ClCompile Include="RLCMessage\RLCMessage.cpp">
+      <Filter>RLCMessage</Filter>
+    </ClCompile>
+    <ClCompile Include="RLCMessage\RLCMessageFactory.cpp">
+      <Filter>RLCMessage</Filter>
+    </ClCompile>
+    <ClCompile Include="RLCMessage\RLCMessageParser.cpp">
+      <Filter>RLCMessage</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
