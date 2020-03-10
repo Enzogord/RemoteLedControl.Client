@@ -20,7 +20,6 @@
 #include "TimeSynchronization/SyncTime.h"
 #include "Service/PinController.h"
 
-#include <LogManager.h>
 #include "RLCLibraryImplementations/Logger/SerialLogger.h"
 
 #define DEBUG true
