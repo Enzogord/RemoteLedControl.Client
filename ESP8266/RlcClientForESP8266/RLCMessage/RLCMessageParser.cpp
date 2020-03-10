@@ -58,6 +58,8 @@ RLCMessage RLCMessageParser::Parse(uint8_t messageBuffer[])
 	//Нет необходимоти в уровне заряда клиента для входящего сообщения
 	index += 2; //занимает 2 байта
 
+	message.IsInitialized = true;
+
 	return message;
 }
 

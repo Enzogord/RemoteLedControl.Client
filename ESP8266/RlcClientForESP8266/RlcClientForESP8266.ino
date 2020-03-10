@@ -20,6 +20,11 @@
 #include "TimeSynchronization/SyncTime.h"
 #include "Service/PinController.h"
 
+#include <LogManager.h>
+#include "RLCLibraryImplementations/Logger/SerialLogger.h"
+
+#define DEBUG true
+
 #define chipSelect 15
 //таймаут ожидания при запросе по мультикасту
 #define SERVER_IP_TIMEOUT 2000UL
@@ -30,6 +35,8 @@
 //значения HIGH и LOW специально инвертированы из-за оборудования
 #define ANALOG_HIGH 255
 #define ANALOG_LOW 0
+
+ILogger* logger;
 
 Ticker tickerFrame;
 Ticker tickerBattery;
@@ -52,8 +59,18 @@ boolean connectionInProgress = false;
 RLCLedController rlcLedController = RLCLedController(&syncTime);
 bool sendBatteryCharge;
 
+void ConfigureLogger() {
+	logger = new SerialLogger(115200);
+
+#if DEBUG
+	logger->Enable();
+#endif
+}
+
 void Initializations()
 {
+	ConfigureLogger();
+
 	Serial.begin(115200);
 	pinMode(A0, INPUT);
 	clientState = ClientStateEnum::Stoped;
@@ -67,7 +84,7 @@ void Initializations()
 
 void InitializeSDCard()
 {
-	Serial.print("Initializing SD card");
+	logger->Print("Initializing SD card");
 	boolean sdActive = false;
 	unsigned long sdTime = millis();
 	while (!sdActive)
@@ -79,17 +96,17 @@ void InitializeSDCard()
 		}
 	}
 
-	Serial.println(" successful!");
+	logger->Print("SD card successfully initialized!");
 }
 
 void WaitingServerIPAddress()
 {
 	FastLED.showColor(CRGB::Magenta);
-	Serial.println("Waiting Server IP address");
+	logger->Print("Waiting Server IP address");
 	RLCMessage requestServerIPMessage = messageFactory.RequestServerIP(clientState);
 	uint8_t* requestBytes = requestServerIPMessage.GetBytes();
 	do {
-		Serial.print("Request Server IP address. ");
+		logger->Print("Request Server IP address. ");
 		udp.begin(rlcSettings.UDPPort);
 		udp.beginPacket(broadcastAddress, rlcSettings.UDPPort);
 		udp.write(requestBytes, RLC_MESSAGE_LENGTH);
@@ -100,18 +117,18 @@ void WaitingServerIPAddress()
 			if (udp.available()) {
 				memset(rlcMessageBuffer, 0, RLC_MESSAGE_LENGTH);
 				udp.readBytes(rlcMessageBuffer, RLC_MESSAGE_LENGTH);
-				Serial.print("Received server IP packet: "); Serial.println(rlcMessageBuffer[5]);
+				logger->Print("Received server IP packet: ", rlcMessageBuffer[5]);
 				RLCMessage response = messageParser.Parse(rlcMessageBuffer);
 				if (!response.IsInitialized) {
-					Serial.println("Response not initialized");
+					logger->Print("Response not initialized");
 					break;
 				}
 				if (response.MessageType != MessageTypeEnum::SendServerIP) {
-					Serial.println("Message type not SendServerIP");
+					logger->Print("Message type not SendServerIP");
 					break;
 				}
 				if (response.IP == IPAddress(0, 0, 0, 0)) {
-					Serial.println("Server IP is empty");
+					logger->Print("Server IP is empty");
 					break;
 				}
 				serverIP = response.IP;
@@ -120,10 +137,10 @@ void WaitingServerIPAddress()
 		udp.stopAll();
 		if (serverIP == IPAddress(0, 0, 0, 0))
 		{
-			Serial.println("Failed to receive server IP address, retry.");
+			logger->Print("Failed to receive server IP address, retry.");
 		}
 	} while (serverIP == IPAddress(0, 0, 0, 0));
-	Serial.print("Received server IP: "); Serial.println(serverIP);
+	logger->Print("Received server IP: ", serverIP);
 }
 
 void WaitingTimeSynchronization(IPAddress& ipAddress, uint16_t port)
@@ -138,7 +155,7 @@ void WaitingTimeSynchronization(IPAddress& ipAddress, uint16_t port)
 //ожидание успешного TCP соединения
 void WaitingConnectToRLCServer(IPAddress& ipAddress, uint16_t port)
 {
-	Serial.print("Waiting connect to "); Serial.print(ipAddress); Serial.print(":"); Serial.println(port);
+	logger->Print("Waiting connect to ", ipAddress, false); logger->Print(":", port);
 	FastLED.showColor(CRGB::Blue);
 	unsigned long connectionTimePoint = millis();
 
@@ -158,7 +175,7 @@ int TryConnectToRLCServer(IPAddress& ipAddress, uint16_t port, unsigned long tim
 	int tcpConnected = 0;
 	//пересоздаем клиент, потому что при разрыве связи не может заново подключиться
 	tcpClient = WiFiClient();
-	Serial.println("Connecting to TCP server");
+	logger->Print("Connecting to TCP server");
 	tcpClient.setTimeout(timeout);
 
 	tcpConnected = tcpClient.connect(ipAddress, port);
@@ -168,7 +185,7 @@ int TryConnectToRLCServer(IPAddress& ipAddress, uint16_t port, unsigned long tim
 		lastTryingConnectionTime = millis();
 		tcpClient.setTimeout(0);
 		tcpClient.keepAlive(2, 1);
-		Serial.println("TCP connected.");
+		logger->Print("TCP connected.");
 	}
 	return tcpConnected;
 }
@@ -181,7 +198,7 @@ void ReadTCPConnection()
 
 	if (!tcpClient.connected() && !connectionInProgress)
 	{
-		Serial.print("Disconnected. Try reconnect");
+		logger->Print("Disconnected. Try reconnect");
 		TryConnectToRLCServer(serverIP, rlcSettings.UDPPort, TCP_CONNECTION_TIMEOUT_ON_WORK);
 		lastTryingConnectionTime = millis();
 		//не задерживаем главный цикл после попытки подключения, сразу возвращая управление
@@ -191,9 +208,12 @@ void ReadTCPConnection()
 	uint8_t packetBuffer[1024];
 
 	while (tcpClient.available()) {
-		Serial.print("[TCP] Received data form server: ");
+		logger->Print("[TCP] Received data form server: ");
 		tcpClient.readBytes(packetBuffer, 1024);
 		RLCMessage message = messageParser.Parse(packetBuffer);
+		logger->Print("message.IsInitialized: ", message.IsInitialized, true);
+		logger->Print("message.Key: ", message.Key);
+		logger->Print("message.SourceType: ", ToString(message.SourceType));
 		if (message.IsInitialized && message.Key == rlcSettings.ProjectKey && message.SourceType == SourceTypeEnum::Server)
 		{
 			OnReceiveMessage(message);
@@ -207,24 +227,24 @@ void OnReceiveMessage(RLCMessage& message)
 	switch (message.MessageType)
 	{
 	case MessageTypeEnum::Play:
-		Serial.println("Receive Play message");
+		logger->Print("Receive Play message");
 		rlcLedController.Play();
 		break;
 	case MessageTypeEnum::Pause:
-		Serial.println("Receive Pause message");
+		logger->Print("Receive Pause message");
 		rlcLedController.Pause();
 		break;
 	case MessageTypeEnum::Stop:
-		Serial.println("Receive Stop message");
+		logger->Print("Receive Stop message");
 		rlcLedController.Stop();
 		break;
 	case MessageTypeEnum::PlayFrom:
-		Serial.println("--- Receive PlayFrom message ---");
+		logger->Print("Receive PlayFrom message");
 		CheckStartFrameTicker(message.SendTime);
 		rlcLedController.PlayFrom(message.PlayFromTime, message.SendTime);
 		break;
 	case MessageTypeEnum::Rewind:
-		Serial.println("Receive Rewind message");
+		logger->Print("Receive Rewind message");
 		CheckStartFrameTicker(message.SendTime);
 		rlcLedController.Rewind(message.PlayFromTime, message.SendTime, message.ClientState);
 		break;
@@ -233,6 +253,7 @@ void OnReceiveMessage(RLCMessage& message)
 		SendMessage(responseMessage);
 		break;
 	default:
+		logger->Print("Receive message: ", ToString(message.MessageType));
 		break;
 	}
 }
@@ -241,6 +262,7 @@ bool frameTickerStarted;
 
 void CheckStartFrameTicker(Time sendTime)
 {
+	
 	if (frameTickerStarted)
 	{
 		return;
@@ -255,10 +277,16 @@ void CheckStartFrameTicker(Time sendTime)
 	deltaTime /= 1000;
 
 	uint32_t waitTime = rlcLedController.frameTime - (deltaTime % rlcLedController.frameTime);
-	Serial.print("Time now: "); Serial.print(now.GetSeconds()); Serial.print(" sec, "); Serial.print(now.GetMicroseconds()); Serial.println("us");
-	Serial.print("Send time: "); Serial.print(sendTime.GetSeconds()); Serial.print(" sec, "); Serial.print(sendTime.GetMicroseconds()); Serial.println("us");
-	Serial.print("deltaTime: "); Serial.print((uint32_t)deltaTime); Serial.println(" ms");
-	Serial.print("waitTime: "); Serial.print(waitTime); Serial.println("ms");
+	logger->Print("Time now: ", now.GetSeconds(), false); 
+	logger->Print(" sec, ", now.GetMicroseconds(), false); 
+	logger->Print("us");
+
+	logger->Print("Send time: ", sendTime.GetSeconds(), false); 
+	logger->Print(" sec, ", sendTime.GetMicroseconds(), false);
+	logger->Print("us");
+
+	logger->Print("deltaTime: ", (uint32_t)deltaTime, false); logger->Print(" ms");
+	logger->Print("waitTime: ", waitTime, false); logger->Print("ms");
 
 
 	tickerFrame.detach();
@@ -282,8 +310,8 @@ void OpenCyclogrammFile()
 {
 	if (!cyclogrammFile) {
 		cyclogrammFile = SD.open(cyclogrammFileName);
-		Serial.print("Cyclogramm opened: "); Serial.println(cyclogrammFile.name());
-		Serial.print("Cyclogramm data available: "); Serial.println(cyclogrammFile.available());
+		logger->Print("Cyclogramm opened: ", cyclogrammFile.name());
+		logger->Print("Cyclogramm data available: ", cyclogrammFile.available());
 	}
 }
 
@@ -308,7 +336,6 @@ void SendBatteryCharge()
 	if (sendBatteryCharge && tcpClient.connected())
 	{
 		uint16_t chargeValue = (uint16_t)analogRead(A0);
-		//Serial.print("Send battery charge level: "); Serial.println(chargeValue);
 		RLCMessage batteryChargeMessage = messageFactory.BatteryCharge(clientState, chargeValue);
 
 		SendMessage(batteryChargeMessage);
@@ -317,9 +344,10 @@ void SendBatteryCharge()
 }
 
 void WiFiConnect() {
+	
 	unsigned long connectionTime = 0;
 	connectionTime = 0;
-	Serial.print("Connecting to WiFi: "); Serial.println(rlcSettings.SSID);
+	logger->Print("Connecting to WiFi: ", rlcSettings.SSID);
 LabelConnection:
 	WiFi.disconnect();
 	WiFi.begin(rlcSettings.SSID.c_str(), rlcSettings.Password.c_str());
@@ -333,10 +361,10 @@ LabelConnection:
 		connectionTime += 10;
 	}
 	broadcastAddress = ~WiFi.subnetMask() | WiFi.gatewayIP();
-	Serial.println("");
-	Serial.println("WiFi connected");
-	Serial.print("Local IP: "); Serial.println(WiFi.localIP());
+	logger->Print("WiFi connected");
+	logger->Print("Local IP: ", WiFi.localIP());
 }
+
 
 void FastLEDInitialization()
 {
@@ -354,33 +382,33 @@ void FastLEDInitialization()
 			{
 			case 0:
 				FastLED.addLeds<WS2812B, 0, GRB>(rlcLedController.LedArray, startLED, rlcSettings.Pins[i].LedCount);
-				Serial.print("Select Pin 0, ");
+				logger->Print("Select Pin 0, ", false);
 				break;
 			case 2:
 				FastLED.addLeds<WS2812B, 2, GRB>(rlcLedController.LedArray, startLED, rlcSettings.Pins[i].LedCount);
-				Serial.print("Select Pin 2, ");
+				logger->Print("Select Pin 2, ", false);
 				break;
 			case 4:
 				FastLED.addLeds<WS2812B, 4, GRB>(rlcLedController.LedArray, startLED, rlcSettings.Pins[i].LedCount);
-				Serial.print("Select Pin 4, ");
+				logger->Print("Select Pin 4, ", false);
 				break;
 			case 5:
 				FastLED.addLeds<WS2812B, 5, GRB>(rlcLedController.LedArray, startLED, rlcSettings.Pins[i].LedCount);
-				Serial.print("Select Pin 5, ");
+				logger->Print("Select Pin 5, ", false);
 				break;
 			default:
 				break;
 			}
-			Serial.print("Pin SPI: "); Serial.print(rlcSettings.Pins[i].Number);
-			Serial.print(", Start LED: "); Serial.print(startLED);
-			Serial.print(", LED count: "); Serial.println(rlcSettings.Pins[i].LedCount);
+			logger->Print("Pin SPI: ", rlcSettings.Pins[i].Number, false);
+			logger->Print(", Start LED: ", startLED, false);
+			logger->Print(", LED count: ", rlcSettings.Pins[i].LedCount, false);
 			startLED += rlcSettings.Pins[i].LedCount;
 		}
 		else if (rlcSettings.Pins[i].Type == PinType::PWM)
 		{
 			rlcLedController.PWMChannels[pwmChannelIndex] = rlcSettings.Pins[i].Number;
 			pinMode(rlcSettings.Pins[i].Number, OUTPUT);
-			Serial.print("Pin PWM: "); Serial.print(rlcLedController.PWMChannels[pwmChannelIndex]);
+			logger->Print("Pin PWM: ", rlcLedController.PWMChannels[pwmChannelIndex]);
 			pwmChannelIndex++;
 		}
 	}
@@ -395,7 +423,7 @@ void DefaultLight() {
 	//Включение свечения по умолчанию, если включена настройка
 	if (rlcSettings.DefaultLightOn)
 	{
-		Serial.print("LED Brightness: "); Serial.print(FastLED.getBrightness());
+		//logger->Print("LED Brightness: ", FastLED.getBrightness());
 		FastLED.showColor(CRGB::White);
 		for (size_t i = 0; i < rlcLedController.PWMChannelCount; i++)
 		{
@@ -412,51 +440,42 @@ void DefaultLight() {
 	}
 }
 
-// the setup function runs once when you press reset or power the board
 void setup()
-{
+{	
+	ConfigureLogger();
+
+	logger = new SerialLogger(115200);
+
+#if DEBUG
+	logger->Enable();
+#endif
+	logger->Print("Start.....");
+
 	Initializations();
 
 	settingFile = SD.open("set.txt", FILE_READ);
 	rlcSettings.ReadSetting(settingFile);
-	Serial.println();
-	Serial.println("-----Project parameters-----");
-	Serial.print("SSID: \"");
-	Serial.print(rlcSettings.SSID);
-	Serial.println("\"");
-	Serial.print("Password: \"");
-	Serial.print(rlcSettings.Password);
-	Serial.println("\"");
-	Serial.print("PlateNumber: ");
-	Serial.println(rlcSettings.PlateNumber);
-	Serial.print("ProjectKey: ");
-	Serial.println(rlcSettings.ProjectKey);
-	Serial.print("UDPPackageSize: ");
-	Serial.println(rlcSettings.UDPPackageSize);
-	Serial.print("UDPPort: ");
-	Serial.println(rlcSettings.UDPPort);
-	Serial.print("LEDCount: ");
-	Serial.println(rlcSettings.SPILedCount);
-	Serial.print("Pins count: ");
-	Serial.println(rlcSettings.PinsCount);
+	logger->PrintNewLine();
+	logger->Print("-----Project parameters-----");
+	logger->Print("SSID: ", rlcSettings.SSID);
+	logger->Print("Password: ", rlcSettings.Password);
+	logger->Print("PlateNumber: ", rlcSettings.PlateNumber);
+	logger->Print("ProjectKey: ", rlcSettings.ProjectKey);
+	logger->Print("UDPPackageSize: ", rlcSettings.UDPPackageSize);
+	logger->Print("UDPPort: ", rlcSettings.UDPPort);
+	logger->Print("LEDCount: ", rlcSettings.SPILedCount);
+	logger->Print("Pins count: ", rlcSettings.PinsCount);
 	for (size_t i = 0; i < rlcSettings.PinsCount; i++)
 	{
-		Serial.print("Pin: ");
-		Serial.print(ToString(rlcSettings.Pins[i].Type));
-		Serial.print(rlcSettings.Pins[i].Number);
-		Serial.print("-");
-		Serial.println(rlcSettings.Pins[i].LedCount);
+		logger->Print("Pin: ", ToString(rlcSettings.Pins[i].Type), false);
+		logger->Print("", rlcSettings.Pins[i].Number, false);
+		logger->Print("-", rlcSettings.Pins[i].LedCount);
 	}
-	Serial.print("DefaultLightMode: ");
-	Serial.println(rlcSettings.DefaultLightOn);
-	Serial.print("SPILedGlobalBrightness: ");
-	Serial.println(rlcSettings.SPILedGlobalBrightness);
+	logger->Print("DefaultLightMode: ", rlcSettings.DefaultLightOn);
+	logger->Print("SPILedGlobalBrightness: ", rlcSettings.SPILedGlobalBrightness);
 
 	OpenCyclogrammFile();
 	rlcLedController.Initialize(FastLEDInitialization, cyclogrammFile, OpenCyclogrammFile);
-
-	Serial.print("----------------------------");
-	Serial.println();
 
 	IsDigitalOutput = rlcSettings.IsDigitalPWMSignal;
 	InvertedOutput = rlcSettings.InvertedPWMSignal;
@@ -471,7 +490,7 @@ void setup()
 	tickerBattery.attach_ms(1000, BatteryChargeHandler);
 }
 
-// the loop function runs over and over again until power down or reset
+
 void loop(void) {
 	SendBatteryCharge();
 	ReadTCPConnection();

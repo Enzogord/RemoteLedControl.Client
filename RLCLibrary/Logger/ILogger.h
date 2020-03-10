@@ -9,6 +9,7 @@ public:
     virtual void Disable() = 0;
 
     virtual void PrintNewLine() = 0;
+    virtual void Print(const char message[], bool newLine = true) = 0;
     virtual void Print(const char message[], const char content[], bool newLine = true) = 0;
     virtual void Print(const char message[], char content, bool newLine = true) = 0;
     virtual void Print(const char message[], unsigned char content, bool newLine = true) = 0;

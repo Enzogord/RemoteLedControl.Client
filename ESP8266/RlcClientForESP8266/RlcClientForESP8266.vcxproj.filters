@@ -16,6 +16,12 @@
     <Filter Include="RLCSetting">
       <UniqueIdentifier>{b7898c9c-74e2-46c1-b5da-2eaee7d5d87a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="RLCLibraryImplementations">
+      <UniqueIdentifier>{3392f719-2460-4604-9d6b-48b67ac5011a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RLCLibraryImplementations\Logger">
+      <UniqueIdentifier>{7788aa6c-23ea-4d44-a4c8-9aecc60f4877}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="RlcClientForESP8266.ino" />
@@ -49,6 +55,9 @@
       <Filter>RLCMessage</Filter>
     </ClInclude>
     <ClInclude Include="__vm\.RlcClientForESP8266.vsarduino.h" />
+    <ClInclude Include="RLCLibraryImplementations\Logger\SerialLogger.h">
+      <Filter>RLCLibraryImplementations\Logger</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RLCSetting\RLCSetting.cpp">
@@ -74,6 +83,9 @@
     </ClCompile>
     <ClCompile Include="RLCMessage\RLCMessageParser.cpp">
       <Filter>RLCMessage</Filter>
+    </ClCompile>
+    <ClCompile Include="RLCLibraryImplementations\Logger\SerialLogger.cpp">
+      <Filter>RLCLibraryImplementations\Logger</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
