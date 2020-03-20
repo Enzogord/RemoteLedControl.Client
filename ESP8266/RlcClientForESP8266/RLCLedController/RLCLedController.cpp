@@ -11,7 +11,7 @@ RLCLedController::~RLCLedController()
 {
 }
 
-void RLCLedController::Initialize(FastLedInitialization initializerMethod, File &cyclogrammFile, ReopenFile reopenFileMethod)
+void RLCLedController::Initialize(FastLedInitialization initializerMethod, File& cyclogrammFile, ReopenFile reopenFileMethod)
 {
 	RLCLedController::reopenFileMethod = reopenFileMethod;
 	RLCLedController::cyclogrammFile = cyclogrammFile;
@@ -23,8 +23,7 @@ void RLCLedController::Initialize(FastLedInitialization initializerMethod, File 
 
 void RLCLedController::Play()
 {
-	if(!IsInitialized)
-	{
+	if(!IsInitialized) {
 		return;
 	}
 	Status = LEDControllerStatuses::Played;
@@ -34,30 +33,25 @@ void RLCLedController::Play()
 //запуск циклограммы с нужного момента времени циклограммы. ¬ заданное врем€.
 //launchFromTime - врем€ в циклограмме с которого должно начатьс€ воспроизведение
 //lauchTime - реальное врем€ в которое должен произойти запуск
-void RLCLedController::PlayFrom(Time &launchFromTime, Time &lauchTime)
+void RLCLedController::PlayFrom(Time& launchFromTime, Time& lauchTime)
 {
-	if(!IsInitialized)
-	{
+	if(!IsInitialized) {
 		return;
 	}
-	if(SetLaunchTime(launchFromTime, lauchTime)) 
-	{
+	if(SetLaunchTime(launchFromTime, lauchTime)) {
 		Status = LEDControllerStatuses::Played;
 		logger.Print("LED controller start play.");
-	}	
+	}
 }
 
-void RLCLedController::Rewind(Time &launchFromTime, Time &lauchTime, ClientStateEnum &clientState)
+void RLCLedController::Rewind(Time& launchFromTime, Time& lauchTime, ClientStateEnum& clientState)
 {
-	if(!IsInitialized)
-	{
+	if(!IsInitialized) {
 		return;
 	}
-	if(SetLaunchTime(launchFromTime, lauchTime))
-	{
+	if(SetLaunchTime(launchFromTime, lauchTime)) {
 		logger.Print("Received status: ", false); logger.Print(ToString(clientState));
-		switch(clientState)
-		{
+		switch(clientState) {
 			case ClientStateEnum::Playing:
 				Status = LEDControllerStatuses::Played;
 				break;
@@ -75,13 +69,11 @@ void RLCLedController::Rewind(Time &launchFromTime, Time &lauchTime, ClientState
 
 void RLCLedController::Stop()
 {
-	if(!IsInitialized)
-	{
+	if(!IsInitialized) {
 		return;
 	}
 	FastLED.clear(true);
-	for(unsigned int i = 0; i < PWMChannelCount; i++)
-	{
+	for(unsigned int i = 0; i < PWMChannelCount; i++) {
 		PinWrite(PWMChannels[i], LOW);
 	}
 	ResetPosition();
@@ -91,8 +83,7 @@ void RLCLedController::Stop()
 
 void RLCLedController::Pause()
 {
-	if(!IsInitialized)
-	{
+	if(!IsInitialized) {
 		return;
 	}
 	Status = LEDControllerStatuses::Paused;
@@ -101,40 +92,32 @@ void RLCLedController::Pause()
 
 void RLCLedController::Show()
 {
-	if(!IsInitialized)
-	{
+	if(!IsInitialized) {
 		return;
 	}
-	if(!cyclogrammFile)
-	{
+	if(!cyclogrammFile) {
 		reopenFileMethod();
-		if(cyclogrammFile && cyclogrammFile.available())
-		{
+		if(cyclogrammFile && cyclogrammFile.available()) {
 			SetPosition(framePosition);
 		}
 	}
-	if(showNext)
-	{
-		if(cyclogrammFile.available() >= FrameBytes)
-		{
+	if(showNext) {
+		if(cyclogrammFile.available() >= FrameBytes) {
 			unsigned long a1 = millis();
-			for(unsigned int i = 0; i < LedCount; i++)
-			{
+			for(unsigned int i = 0; i < LedCount; i++) {
 				LedArray[i].r = cyclogrammFile.read();
 				LedArray[i].g = cyclogrammFile.read();
 				LedArray[i].b = cyclogrammFile.read();
 			}
 
-			for(unsigned int i = 0; i < PWMChannelCount; i++)
-			{
+			for(unsigned int i = 0; i < PWMChannelCount; i++) {
 				uint8_t pwmOutput = cyclogrammFile.read();
 				PinWrite(PWMChannels[i], pwmOutput);
 			}
 			FastLED.show();
 		}
 
-		if(cyclogrammFile && cyclogrammFile.available() <= FrameBytes)
-		{
+		if(cyclogrammFile && cyclogrammFile.available() <= FrameBytes) {
 			Stop();
 			logger.Print("Cyclogramm ended. LED controller stoped.");
 		}
@@ -145,18 +128,15 @@ void RLCLedController::Show()
 
 void RLCLedController::NextFrame()
 {
-	if(!IsInitialized)
-	{
+	if(!IsInitialized) {
 		return;
 	}
-	if(Status == LEDControllerStatuses::Played)
-	{
-		if(showNext)
-		{
+	if(Status == LEDControllerStatuses::Played) {
+		if(showNext) {
 			logger.Print("!!!!!!!!! FATAL ERROR. FRAME OVERLAY!!!!!!!!!!!, NEED INCREASE FRAME TIME OR REDUCE DATA VOLUME");
 		}
 		showNext = true;
-		framePosition ++;
+		framePosition++;
 		Time now = TimeNow();
 		logger.Print("Current frame: ", false); logger.Print("", framePosition, false); logger.Print(", ", false);
 		logger.Print("", now.GetSeconds(), false); logger.Print("sec, ", false); logger.Print("", now.GetMicroseconds(), false); logger.Print("us");
@@ -166,14 +146,12 @@ void RLCLedController::NextFrame()
 }
 
 void RLCLedController::SetPosition(uint64_t framePosition)
-{	
-	if(!IsInitialized)
-	{
+{
+	if(!IsInitialized) {
 		return;
 	}
 	uint64_t frameBytePosition = GetFrameBytePosition(framePosition);
-	if(frameBytePosition >= (cyclogrammFile.size() - FrameBytes))
-	{
+	if(frameBytePosition >= (cyclogrammFile.size() - FrameBytes)) {
 		Stop();
 		logger.Print("Position out of range cyclogramm size or set position to last frame. LED controller stoped.");
 	}
@@ -187,31 +165,28 @@ void RLCLedController::ResetPosition()
 	framePosition = 0;
 }
 
-bool RLCLedController::SetLaunchTime(Time &launchFromTime, Time &sendTime)
+bool RLCLedController::SetLaunchTime(Time& launchFromTime, Time& sendTime)
 {
 	Time now = TimeNow();
 
 	Time cyclogrammLength = GetCyclogrammLength();
-	uint32_t framesCount =  (cyclogrammFile.size() / FrameBytes);
+	uint32_t framesCount = (cyclogrammFile.size() / FrameBytes);
 	logger.Print("Time now: ", false); logger.Print("", now.GetSeconds(), false); logger.Print("sec, ", false); logger.Print("", now.GetMicroseconds(), false); logger.Print("us");
 	logger.Print("Send time: ", false); logger.Print("", sendTime.GetSeconds(), false); logger.Print("sec, ", false); logger.Print("", sendTime.GetMicroseconds(), false); logger.Print("us");
 	logger.Print("Launch from time: ", false); logger.Print("", launchFromTime.GetSeconds(), false); logger.Print("sec, ", false); logger.Print("", launchFromTime.GetMicroseconds(), false); logger.Print("us");
-	
+
 	uint32_t targetFrame = GetFrameFromTime(launchFromTime);
 	logger.Print("targetFrame: ", targetFrame);
 	uint32_t correctedFrame;
 	Time corTime;
-	if(now > sendTime)
-	{
+	if(now > sendTime) {
 		Time delta = now - sendTime;
 		correctedFrame = targetFrame + GetFrameFromTime(delta);
 	}
-	else
-	{
+	else {
 		Time delta = sendTime - now;
 		int32_t cf = (int32_t)targetFrame - (int32_t)GetFrameFromTime(delta);
-		if(cf < 0)
-		{
+		if(cf < 0) {
 			cf = 0;
 		}
 		correctedFrame = cf;
@@ -219,8 +194,7 @@ bool RLCLedController::SetLaunchTime(Time &launchFromTime, Time &sendTime)
 
 	correctedFrame++;
 
-	if (correctedFrame > framesCount)
-	{
+	if(correctedFrame > framesCount) {
 		logger.Print("out of cyclogramm!!!!!!!!!!!");
 		return false;
 	}
@@ -229,7 +203,7 @@ bool RLCLedController::SetLaunchTime(Time &launchFromTime, Time &sendTime)
 	return true;
 }
 
-uint32_t RLCLedController::GetFrameFromTime(Time &time)
+uint32_t RLCLedController::GetFrameFromTime(Time& time)
 {
 	return time.TotalMicroseconds / (uint32_t)1000 / frameTime;
 }
