@@ -9,10 +9,23 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "RLCLibrary", "RLCLibrary", 
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Logger", "RLCLibrary\Logger\Logger.vcxitems", "{4B3B3975-8ECC-4D4B-BE79-E70A0602FB5F}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Time", "RLCLibrary\Time\Time.vcxitems", "{965B7197-60D4-485F-8B1D-B08E4A7EB463}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Infrastructure", "RLCLibrary\Infrastructure\Infrastructure.vcxitems", "{5B2F9ED3-23CD-46C1-AF42-6406B682C099}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestLibraryForESP8266", "ESP8266\TestLibraryForESP8266\TestLibraryForESP8266.vcxproj", "{3D3EBD97-C1A6-4489-B134-3D538AB94701}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		RLCLibrary\Infrastructure\Infrastructure.vcxitems*{3d3ebd97-c1a6-4489-b134-3d538ab94701}*SharedItemsImports = 4
+		RLCLibrary\Logger\Logger.vcxitems*{3d3ebd97-c1a6-4489-b134-3d538ab94701}*SharedItemsImports = 4
+		RLCLibrary\Time\Time.vcxitems*{3d3ebd97-c1a6-4489-b134-3d538ab94701}*SharedItemsImports = 4
 		RLCLibrary\Logger\Logger.vcxitems*{4b3b3975-8ecc-4d4b-be79-e70a0602fb5f}*SharedItemsImports = 9
+		RLCLibrary\Infrastructure\Infrastructure.vcxitems*{5b2f9ed3-23cd-46c1-af42-6406b682c099}*SharedItemsImports = 9
+		RLCLibrary\Time\Time.vcxitems*{965b7197-60d4-485f-8b1d-b08e4a7eb463}*SharedItemsImports = 9
+		RLCLibrary\Infrastructure\Infrastructure.vcxitems*{c5f80730-f44f-4478-bdae-6634efc2ca88}*SharedItemsImports = 4
 		RLCLibrary\Logger\Logger.vcxitems*{c5f80730-f44f-4478-bdae-6634efc2ca88}*SharedItemsImports = 4
+		RLCLibrary\Time\Time.vcxitems*{c5f80730-f44f-4478-bdae-6634efc2ca88}*SharedItemsImports = 4
 	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
@@ -23,12 +36,18 @@ Global
 		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Debug|x86.Build.0 = Debug|Win32
 		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Release|x86.ActiveCfg = Release|Win32
 		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Release|x86.Build.0 = Release|Win32
+		{3D3EBD97-C1A6-4489-B134-3D538AB94701}.Debug|x86.ActiveCfg = Debug|Win32
+		{3D3EBD97-C1A6-4489-B134-3D538AB94701}.Debug|x86.Build.0 = Debug|Win32
+		{3D3EBD97-C1A6-4489-B134-3D538AB94701}.Release|x86.ActiveCfg = Release|Win32
+		{3D3EBD97-C1A6-4489-B134-3D538AB94701}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{4B3B3975-8ECC-4D4B-BE79-E70A0602FB5F} = {5AD8E411-2745-4FB9-862E-0DC9783E5C66}
+		{965B7197-60D4-485F-8B1D-B08E4A7EB463} = {5AD8E411-2745-4FB9-862E-0DC9783E5C66}
+		{5B2F9ED3-23CD-46C1-AF42-6406B682C099} = {5AD8E411-2745-4FB9-862E-0DC9783E5C66}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {FFA643D8-89D7-4161-A832-F46F8ADC8C02}

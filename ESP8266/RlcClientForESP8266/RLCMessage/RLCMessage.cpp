@@ -40,18 +40,12 @@ uint8_t* RLCMessage::GetBytes()
 	messageBuffer[byteIndex++] = (uint8_t)(IP[1]);
 	messageBuffer[byteIndex++] = (uint8_t)(IP[2]);
 	messageBuffer[byteIndex++] = (uint8_t)(IP[3]);
-
-	PlayFromTime.SetSecondsTo(messageBuffer, byteIndex);
-	byteIndex += 4;
 	
-	PlayFromTime.SetSecondFractionsTo(messageBuffer, byteIndex);
-	byteIndex += 4;
+	SetTimeToArray(PlayFromTime, messageBuffer, byteIndex);
+	byteIndex += 8;
 
-	SendTime.SetSecondsTo(messageBuffer, byteIndex);
-	byteIndex += 4;
-
-	SendTime.SetSecondFractionsTo(messageBuffer, byteIndex);
-	byteIndex += 4;
+	SetTimeToArray(SendTime, messageBuffer, byteIndex);
+	byteIndex += 8;
 
 	messageBuffer[byteIndex++] = (uint8_t)(BatteryCharge >> 8);
 	messageBuffer[byteIndex++] = (uint8_t)(BatteryCharge >> 0);

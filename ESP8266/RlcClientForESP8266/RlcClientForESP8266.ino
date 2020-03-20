@@ -17,10 +17,12 @@
 #include "RLCMessage/RLCEnums.h"
 #include "RLCMessage/RLCMessageFactory.h"
 #include "RLCLedController/RLCLedController.h"
-#include "TimeSynchronization/SyncTime.h"
 #include "Service/PinController.h"
-
 #include "RLCLibraryImplementations/Logger/SerialLogger.h"
+#include "RLCLibraryImplementations/Time/SntpClient.h"
+#include <SNTP/TimeSynchronization.h>
+#include <Time.h>
+#include <TimeNow.h>
 
 #define DEBUG true
 
@@ -39,6 +41,7 @@ ILogger* logger;
 
 Ticker tickerFrame;
 Ticker tickerBattery;
+Ticker tickerClock;
 
 File cyclogrammFile;
 File settingFile;
@@ -48,14 +51,13 @@ String cyclogrammFileName = "Data.cyc";
 uint8* rlcMessageBuffer = new uint8[RLC_MESSAGE_LENGTH];
 WiFiClient tcpClient;
 WiFiUDP udp;
-SyncTime syncTime;
 unsigned long lastTryingConnectionTime;
 ClientStateEnum clientState;
 RLCSetting rlcSettings;
 RLCMessageParser messageParser;
 RLCMessageFactory messageFactory;
 boolean connectionInProgress = false;
-RLCLedController rlcLedController = RLCLedController(&syncTime);
+RLCLedController rlcLedController = RLCLedController();
 bool sendBatteryCharge;
 
 void ConfigureLogger() {
@@ -70,10 +72,11 @@ void Initializations()
 {
 	ConfigureLogger();
 
-	Serial.begin(115200);
+	//Указываем метод для получения текущего времени выполнения программы
+	SetWorkTimeFunction(micros64);
+
 	pinMode(A0, INPUT);
 	clientState = ClientStateEnum::Stoped;
-	//syncTime.LastTime = Time(63681897600, 0); //01.01.2019 00:00:00:000000
 
 	// Отключение точки доступа
 	WiFi.softAPdisconnect(true);
@@ -140,15 +143,6 @@ void WaitingServerIPAddress()
 		}
 	} while (serverIP == IPAddress(0, 0, 0, 0));
 	logger->Print("Received server IP: ", serverIP);
-}
-
-void WaitingTimeSynchronization(IPAddress& ipAddress, uint16_t port)
-{
-	FastLED.showColor(CRGB::Green);
-	udp.begin(port);
-	syncTime.Init(udp);
-	syncTime.SynchronizeTimeMultiple(serverIP, NTP_PORT, 30);
-	udp.stopAll();
 }
 
 //ожидание успешного TCP соединения
@@ -267,7 +261,7 @@ void CheckStartFrameTicker(Time sendTime)
 		return;
 	}
 
-	Time now = syncTime.Now();
+	Time now = TimeNow();
 	int64_t deltaTime = now.TotalMicroseconds - sendTime.TotalMicroseconds;
 	if (deltaTime < 0)
 	{
@@ -289,14 +283,9 @@ void CheckStartFrameTicker(Time sendTime)
 
 
 	tickerFrame.detach();
-	tickerFrame.once_ms(waitTime, StartFrameTicker);
-	frameTickerStarted = true;
-}
-
-void StartFrameTicker()
-{
-	tickerFrame.detach();
+	delay(waitTime);
 	tickerFrame.attach_ms(rlcLedController.frameTime, NextFrameHandler);
+	frameTickerStarted = true;
 }
 
 void SendMessage(RLCMessage& message) {
@@ -318,7 +307,7 @@ Time lastFrameTime;
 void NextFrameHandler()
 {
 	rlcLedController.NextFrame();
-	lastFrameTime = syncTime.Now();
+	lastFrameTime = TimeNow();
 }
 
 void BatteryChargeHandler()
@@ -422,7 +411,6 @@ void DefaultLight() {
 	//Включение свечения по умолчанию, если включена настройка
 	if (rlcSettings.DefaultLightOn)
 	{
-		//logger->Print("LED Brightness: ", FastLED.getBrightness());
 		FastLED.showColor(CRGB::White);
 		for (size_t i = 0; i < rlcLedController.PWMChannelCount; i++)
 		{
@@ -439,17 +427,42 @@ void DefaultLight() {
 	}
 }
 
+void WaitingTimeSynchronization(IPAddress& ipAddress, uint16_t port)
+{
+	FastLED.showColor(CRGB::Green);
+	udp.begin(port);
+
+	ISntpClient* sntpClient = new SntpClient(udp, serverIP, NTP_PORT);
+	TimeSynchronization timeSync = TimeSynchronization(*sntpClient, *logger);
+	timeSync.SynchronizeMultiple(10, 20000);
+
+	udp.stopAll();
+	if(DEBUG) {
+		uint32_t clockStartDelay = 1000 - TimeNow().GetMilliseconds();
+		delay(clockStartDelay);
+		tickerClock.attach_ms(1000, RequestPrintTime);
+	}	
+}
+
+bool needPrintTime = false;
+void PrintTime()
+{
+	if(needPrintTime) {
+		Time now = TimeNow();
+		logger->Print("Now: ", now.GetSeconds(), false);
+		logger->Print("sec, ", now.GetMicroseconds(), false);
+		logger->Print("us");
+		needPrintTime = false;
+	}
+}
+
+void RequestPrintTime()
+{
+	needPrintTime = true;
+}
+
 void setup()
 {	
-	ConfigureLogger();
-
-	logger = new SerialLogger(115200);
-
-#if DEBUG
-	logger->Enable();
-#endif
-	logger->Print("Start.....");
-
 	Initializations();
 
 	settingFile = SD.open("set.txt", FILE_READ);
@@ -489,8 +502,8 @@ void setup()
 	tickerBattery.attach_ms(1000, BatteryChargeHandler);
 }
 
-
 void loop(void) {
+	PrintTime();
 	SendBatteryCharge();
 	ReadTCPConnection();
 	rlcLedController.Show();

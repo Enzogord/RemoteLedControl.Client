@@ -46,11 +46,11 @@ RLCMessage RLCMessageParser::Parse(uint8_t messageBuffer[])
 	message.IP = IPAddress(messageBuffer[index++], messageBuffer[index++], messageBuffer[index++], messageBuffer[index++]);
 	
 	//Playfrom time
-	message.PlayFromTime = Time(messageBuffer, index);
+	message.PlayFromTime = GetTimeFromArray(messageBuffer, index);
 	index += 8;
 
 	//Send time
-	message.SendTime = Time(messageBuffer, index);
+	message.SendTime = GetTimeFromArray(messageBuffer, index);
 	index += 8;
 
 	//BatteryCharge

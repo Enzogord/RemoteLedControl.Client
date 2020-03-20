@@ -25,6 +25,8 @@ public:
 	virtual void Print(const char message[], unsigned int content, bool newLine);
 	virtual void Print(const char message[], long content, bool newLine);
 	virtual void Print(const char message[], unsigned long content, bool newLine);
+	virtual void Print(const char message[], long long content, bool newLine);
+	virtual void Print(const char message[], unsigned long long content, bool newLine);
 	virtual void Print(const char message[], double content, bool newLine);
 };
 

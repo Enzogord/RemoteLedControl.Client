@@ -3,7 +3,8 @@
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include "RLCEnums.h"
-#include "../TimeSynchronization/Time.h"
+#include <Time.h>
+#include <SNTP/SntpFunctions.h>
 
 #define RLC_MESSAGE_LENGTH 200
 

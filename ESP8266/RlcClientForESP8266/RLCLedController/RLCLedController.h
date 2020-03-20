@@ -2,8 +2,8 @@
 #include "FastLED.h"
 #include <SD.h>
 #include "../Service/PinController.h"
-#include "../TimeSynchronization/SyncTime.h"
 #include "../RLCMessage/RLCEnums.h"
+#include <TimeNow.h>
 
 typedef void (*FastLedInitialization)();
 typedef void (*ReopenFile)();
@@ -41,7 +41,7 @@ public:
 	//время одного кадра, мс (по умолчанию 50 мс)
 	uint32_t frameTime = 50;
 
-	RLCLedController(SyncTime *syncTime);
+	RLCLedController();
 	~RLCLedController();
 
 	void Initialize(FastLedInitialization initializerMethod, File &cyclogrammFile, ReopenFile reopenFileMethod);
@@ -58,8 +58,6 @@ private:
 	ReopenFile reopenFileMethod;
 	File cyclogrammFile;
 	boolean showNext = false;
-
-	SyncTime* timeProvider;	
 
 	// Номер кадр с которого будет начато воспроизведение
 	//unsigned long launchFrame;

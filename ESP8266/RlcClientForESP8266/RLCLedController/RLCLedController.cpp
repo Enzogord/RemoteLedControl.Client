@@ -1,10 +1,9 @@
 #include "RLCLedController.h"
 
-RLCLedController::RLCLedController(SyncTime *syncTime)
+RLCLedController::RLCLedController()
 {
 	IsInitialized = false;
 	Status = LEDControllerStatuses::Stoped;
-	timeProvider = syncTime;
 }
 
 RLCLedController::~RLCLedController()
@@ -157,7 +156,7 @@ void RLCLedController::NextFrame()
 		}
 		showNext = true;
 		framePosition ++;
-		Time now = (*timeProvider).Now();
+		Time now = TimeNow();
 		Serial.print("Current frame: "); Serial.print(framePosition); Serial.print(", ");
 		Serial.print(now.GetSeconds()); Serial.print("sec, "); Serial.print(now.GetMicroseconds()); Serial.print("us");
 		Time curPlay = GetCurrentPlayTime();
@@ -189,7 +188,8 @@ void RLCLedController::ResetPosition()
 
 bool RLCLedController::SetLaunchTime(Time &launchFromTime, Time &sendTime)
 {
-	Time now = (*timeProvider).Now();
+	Time now = TimeNow();
+
 	Time cyclogrammLength = GetCyclogrammLength();
 	uint32_t framesCount =  (cyclogrammFile.size() / FrameBytes);
 	//Time currentPlayTime = GetCurrentPlayTime();
