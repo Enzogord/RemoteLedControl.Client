@@ -4,6 +4,7 @@
 #include "../Service/PinController.h"
 #include "../RLCMessage/RLCEnums.h"
 #include <TimeNow.h>
+#include <ILogger.h>
 
 typedef void (*FastLedInitialization)();
 typedef void (*ReopenFile)();
@@ -41,7 +42,7 @@ public:
 	//время одного кадра, мс (по умолчанию 50 мс)
 	uint32_t frameTime = 50;
 
-	RLCLedController();
+	RLCLedController(ILogger& loggerRef);
 	~RLCLedController();
 
 	void Initialize(FastLedInitialization initializerMethod, File &cyclogrammFile, ReopenFile reopenFileMethod);
@@ -55,6 +56,7 @@ public:
 	void NextFrame();
 
 private:
+	ILogger& logger;
 	ReopenFile reopenFileMethod;
 	File cyclogrammFile;
 	boolean showNext = false;

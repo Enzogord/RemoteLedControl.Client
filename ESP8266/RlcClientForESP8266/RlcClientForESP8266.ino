@@ -57,7 +57,7 @@ RLCSetting rlcSettings;
 RLCMessageParser messageParser;
 RLCMessageFactory messageFactory;
 boolean connectionInProgress = false;
-RLCLedController rlcLedController = RLCLedController();
+RLCLedController* rlcLedController;
 bool sendBatteryCharge;
 
 void ConfigureLogger() {
@@ -74,6 +74,8 @@ void Initializations()
 
 	//”казываем метод дл€ получени€ текущего времени выполнени€ программы
 	SetWorkTimeFunction(micros64);
+
+	rlcLedController = new RLCLedController(*logger);
 
 	pinMode(A0, INPUT);
 	clientState = ClientStateEnum::Stoped;
@@ -221,25 +223,25 @@ void OnReceiveMessage(RLCMessage& message)
 	{
 	case MessageTypeEnum::Play:
 		logger->Print("Receive Play message");
-		rlcLedController.Play();
+		rlcLedController->Play();
 		break;
 	case MessageTypeEnum::Pause:
 		logger->Print("Receive Pause message");
-		rlcLedController.Pause();
+		rlcLedController->Pause();
 		break;
 	case MessageTypeEnum::Stop:
 		logger->Print("Receive Stop message");
-		rlcLedController.Stop();
+		rlcLedController->Stop();
 		break;
 	case MessageTypeEnum::PlayFrom:
 		logger->Print("Receive PlayFrom message");
 		CheckStartFrameTicker(message.SendTime);
-		rlcLedController.PlayFrom(message.PlayFromTime, message.SendTime);
+		rlcLedController->PlayFrom(message.PlayFromTime, message.SendTime);
 		break;
 	case MessageTypeEnum::Rewind:
 		logger->Print("Receive Rewind message");
 		CheckStartFrameTicker(message.SendTime);
-		rlcLedController.Rewind(message.PlayFromTime, message.SendTime, message.ClientState);
+		rlcLedController->Rewind(message.PlayFromTime, message.SendTime, message.ClientState);
 		break;
 	case MessageTypeEnum::RequestClientInfo:
 		responseMessage = messageFactory.SendClientInfo(clientState);
@@ -269,7 +271,7 @@ void CheckStartFrameTicker(Time sendTime)
 	}
 	deltaTime /= 1000;
 
-	uint32_t waitTime = rlcLedController.frameTime - (deltaTime % rlcLedController.frameTime);
+	uint32_t waitTime = rlcLedController->frameTime - (deltaTime % rlcLedController->frameTime);
 	logger->Print("Time now: ", now.GetSeconds(), false); 
 	logger->Print(" sec, ", now.GetMicroseconds(), false); 
 	logger->Print("us");
@@ -284,7 +286,7 @@ void CheckStartFrameTicker(Time sendTime)
 
 	tickerFrame.detach();
 	delay(waitTime);
-	tickerFrame.attach_ms(rlcLedController.frameTime, NextFrameHandler);
+	tickerFrame.attach_ms(rlcLedController->frameTime, NextFrameHandler);
 	frameTickerStarted = true;
 }
 
@@ -306,7 +308,7 @@ void OpenCyclogrammFile()
 Time lastFrameTime;
 void NextFrameHandler()
 {
-	rlcLedController.NextFrame();
+	rlcLedController->NextFrame();
 	lastFrameTime = TimeNow();
 }
 
@@ -356,10 +358,10 @@ LabelConnection:
 
 void FastLEDInitialization()
 {
-	rlcLedController.LedCount = rlcSettings.SPILedCount;
-	rlcLedController.LedArray = new CRGB[rlcLedController.LedCount];
-	rlcLedController.PWMChannelCount = rlcSettings.PWMChannelCount;
-	rlcLedController.PWMChannels = new int[rlcLedController.PWMChannelCount];
+	rlcLedController->LedCount = rlcSettings.SPILedCount;
+	rlcLedController->LedArray = new CRGB[rlcLedController->LedCount];
+	rlcLedController->PWMChannelCount = rlcSettings.PWMChannelCount;
+	rlcLedController->PWMChannels = new int[rlcLedController->PWMChannelCount];
 	int pwmChannelIndex = 0;
 	int startLED = 0;
 	for (size_t i = 0; i < rlcSettings.PinsCount; i++)
@@ -369,19 +371,19 @@ void FastLEDInitialization()
 			switch (rlcSettings.Pins[i].Number)
 			{
 			case 0:
-				FastLED.addLeds<WS2812B, 0, GRB>(rlcLedController.LedArray, startLED, rlcSettings.Pins[i].LedCount);
+				FastLED.addLeds<WS2812B, 0, GRB>(rlcLedController->LedArray, startLED, rlcSettings.Pins[i].LedCount);
 				logger->Print("Select Pin 0, ", false);
 				break;
 			case 2:
-				FastLED.addLeds<WS2812B, 2, GRB>(rlcLedController.LedArray, startLED, rlcSettings.Pins[i].LedCount);
+				FastLED.addLeds<WS2812B, 2, GRB>(rlcLedController->LedArray, startLED, rlcSettings.Pins[i].LedCount);
 				logger->Print("Select Pin 2, ", false);
 				break;
 			case 4:
-				FastLED.addLeds<WS2812B, 4, GRB>(rlcLedController.LedArray, startLED, rlcSettings.Pins[i].LedCount);
+				FastLED.addLeds<WS2812B, 4, GRB>(rlcLedController->LedArray, startLED, rlcSettings.Pins[i].LedCount);
 				logger->Print("Select Pin 4, ", false);
 				break;
 			case 5:
-				FastLED.addLeds<WS2812B, 5, GRB>(rlcLedController.LedArray, startLED, rlcSettings.Pins[i].LedCount);
+				FastLED.addLeds<WS2812B, 5, GRB>(rlcLedController->LedArray, startLED, rlcSettings.Pins[i].LedCount);
 				logger->Print("Select Pin 5, ", false);
 				break;
 			default:
@@ -394,9 +396,9 @@ void FastLEDInitialization()
 		}
 		else if (rlcSettings.Pins[i].Type == PinType::PWM)
 		{
-			rlcLedController.PWMChannels[pwmChannelIndex] = rlcSettings.Pins[i].Number;
+			rlcLedController->PWMChannels[pwmChannelIndex] = rlcSettings.Pins[i].Number;
 			pinMode(rlcSettings.Pins[i].Number, OUTPUT);
-			logger->Print("Pin PWM: ", rlcLedController.PWMChannels[pwmChannelIndex]);
+			logger->Print("Pin PWM: ", rlcLedController->PWMChannels[pwmChannelIndex]);
 			pwmChannelIndex++;
 		}
 	}
@@ -404,7 +406,7 @@ void FastLEDInitialization()
 }
 
 void DefaultLight() {
-	if (!rlcLedController.IsInitialized)
+	if (!rlcLedController->IsInitialized)
 	{
 		return;
 	}
@@ -412,17 +414,17 @@ void DefaultLight() {
 	if (rlcSettings.DefaultLightOn)
 	{
 		FastLED.showColor(CRGB::White);
-		for (size_t i = 0; i < rlcLedController.PWMChannelCount; i++)
+		for (size_t i = 0; i < rlcLedController->PWMChannelCount; i++)
 		{
-			PinWrite(rlcLedController.PWMChannels[i], ANALOG_HIGH);
+			PinWrite(rlcLedController->PWMChannels[i], ANALOG_HIGH);
 		}
 	}
 	else
 	{
 		FastLED.clear(true);
-		for (size_t i = 0; i < rlcLedController.PWMChannelCount; i++)
+		for (size_t i = 0; i < rlcLedController->PWMChannelCount; i++)
 		{
-			PinWrite(rlcLedController.PWMChannels[i], ANALOG_LOW);
+			PinWrite(rlcLedController->PWMChannels[i], ANALOG_LOW);
 		}
 	}
 }
@@ -487,7 +489,7 @@ void setup()
 	logger->Print("SPILedGlobalBrightness: ", rlcSettings.SPILedGlobalBrightness);
 
 	OpenCyclogrammFile();
-	rlcLedController.Initialize(FastLEDInitialization, cyclogrammFile, OpenCyclogrammFile);
+	rlcLedController->Initialize(FastLEDInitialization, cyclogrammFile, OpenCyclogrammFile);
 
 	IsDigitalOutput = rlcSettings.IsDigitalPWMSignal;
 	InvertedOutput = rlcSettings.InvertedPWMSignal;
@@ -506,5 +508,5 @@ void loop(void) {
 	PrintTime();
 	SendBatteryCharge();
 	ReadTCPConnection();
-	rlcLedController.Show();
+	rlcLedController->Show();
 }
