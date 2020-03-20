@@ -60,6 +60,37 @@ boolean connectionInProgress = false;
 RLCLedController* rlcLedController;
 bool sendBatteryCharge;
 
+#pragma region Проводной запуск
+
+bool wiredMode = false;
+const int wiredButtonPin = 16;
+int wiredButtonState = 0;
+
+//переменная хранящее пуск воспроизведения
+bool wiredStartIsInitialized;
+//переменная хранящее пуск воспроизведения
+bool wiredStarted;
+
+//Функция получения состояния кнопки с учетом дребезга контакта
+int GetButtonState()
+{
+	//старое состояние кнопки
+	int oldButtonState = wiredButtonState;
+	wiredButtonState = digitalRead(wiredButtonPin);
+	if(oldButtonState != wiredButtonState) {
+		delay(10);
+		wiredButtonState = digitalRead(wiredButtonPin);
+	}
+	//Вывод состояния кнопки (только для отладки)
+	if(oldButtonState != wiredButtonState) {
+		logger->Print("button state: ", wiredButtonState);
+	}
+	return wiredButtonState;
+}
+
+#pragma endregion Проводной запуск
+
+
 void ConfigureLogger() {
 	logger = new SerialLogger(115200);
 
@@ -84,6 +115,9 @@ void Initializations()
 	WiFi.softAPdisconnect(true);
 
 	InitializeSDCard();
+
+	// инициализируем пин, подключенный к кнопке, как вход
+	pinMode(wiredButtonPin, INPUT);
 }
 
 void InitializeSDCard()
@@ -463,6 +497,51 @@ void RequestPrintTime()
 	needPrintTime = true;
 }
 
+void CheckWiredStart()
+{
+	if(wiredStarted) {
+		return;
+	}
+	// считываем значения с входа кнопки  
+	wiredButtonState = GetButtonState();
+
+	if(wiredButtonState == HIGH && !wiredStartIsInitialized) {
+		logger->Print("Programm initialized");
+		wiredStartIsInitialized = true;
+	}
+
+	// проверяем нажата ли кнопка
+	// если нажата, то buttonState будет LOW:
+	if(wiredButtonState == LOW && wiredStartIsInitialized && !wiredStarted) {
+		logger->Print("Programm started");
+		tickerFrame.attach_ms(rlcLedController->frameTime, NextFrameHandler);
+		rlcLedController->Play();
+		wiredStarted = true;
+		//конец последовательности воспроизведения
+		wiredStartIsInitialized = false;
+	}
+}
+
+void WiredSetup()
+{
+	// считываем значения с входа кнопки  
+	wiredButtonState = GetButtonState();
+	wiredMode = wiredButtonState == HIGH;
+}
+
+void WirelessSetup()
+{
+	messageFactory = RLCMessageFactory(rlcSettings.ProjectKey, rlcSettings.PlateNumber);
+
+	WiFiConnect();
+	WaitingServerIPAddress();
+	WaitingTimeSynchronization(serverIP, NTP_PORT);
+	WaitingConnectToRLCServer(serverIP, rlcSettings.UDPPort);
+
+	DefaultLight();
+	tickerBattery.attach_ms(1000, BatteryChargeHandler);
+}
+
 void setup()
 {	
 	Initializations();
@@ -479,8 +558,7 @@ void setup()
 	logger->Print("UDPPort: ", rlcSettings.UDPPort);
 	logger->Print("LEDCount: ", rlcSettings.SPILedCount);
 	logger->Print("Pins count: ", rlcSettings.PinsCount);
-	for (size_t i = 0; i < rlcSettings.PinsCount; i++)
-	{
+	for(size_t i = 0; i < rlcSettings.PinsCount; i++) {
 		logger->Print("Pin: ", ToString(rlcSettings.Pins[i].Type), false);
 		logger->Print("", rlcSettings.Pins[i].Number, false);
 		logger->Print("-", rlcSettings.Pins[i].LedCount);
@@ -493,20 +571,28 @@ void setup()
 
 	IsDigitalOutput = rlcSettings.IsDigitalPWMSignal;
 	InvertedOutput = rlcSettings.InvertedPWMSignal;
-	messageFactory = RLCMessageFactory(rlcSettings.ProjectKey, rlcSettings.PlateNumber);
+	WiredSetup();
 
-	WiFiConnect();
-	WaitingServerIPAddress();
-	WaitingTimeSynchronization(serverIP, NTP_PORT);
-	WaitingConnectToRLCServer(serverIP, rlcSettings.UDPPort);
-
-	DefaultLight();
-	tickerBattery.attach_ms(1000, BatteryChargeHandler);
+	
+	logger->Print("--------------------");
+	if(wiredMode) {
+		logger->Print("Wired mode enabled");
+	}
+	else {
+		logger->Print("Wireless mode enabled");
+		WirelessSetup();
+	}
 }
 
 void loop(void) {
-	PrintTime();
-	SendBatteryCharge();
-	ReadTCPConnection();
+	if(wiredMode) {
+		CheckWiredStart();
+	}
+	else {
+		PrintTime();
+		SendBatteryCharge();
+		ReadTCPConnection();
+	}
+	
 	rlcLedController->Show();
 }

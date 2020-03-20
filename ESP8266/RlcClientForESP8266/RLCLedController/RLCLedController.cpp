@@ -30,43 +30,6 @@ void RLCLedController::Play()
 	logger.Print("LED controller start play.");
 }
 
-//запуск циклограммы с нужного момента времени циклограммы. ¬ заданное врем€.
-//launchFromTime - врем€ в циклограмме с которого должно начатьс€ воспроизведение
-//lauchTime - реальное врем€ в которое должен произойти запуск
-void RLCLedController::PlayFrom(Time& launchFromTime, Time& lauchTime)
-{
-	if(!IsInitialized) {
-		return;
-	}
-	if(SetLaunchTime(launchFromTime, lauchTime)) {
-		Status = LEDControllerStatuses::Played;
-		logger.Print("LED controller start play.");
-	}
-}
-
-void RLCLedController::Rewind(Time& launchFromTime, Time& lauchTime, ClientStateEnum& clientState)
-{
-	if(!IsInitialized) {
-		return;
-	}
-	if(SetLaunchTime(launchFromTime, lauchTime)) {
-		logger.Print("Received status: ", false); logger.Print(ToString(clientState));
-		switch(clientState) {
-			case ClientStateEnum::Playing:
-				Status = LEDControllerStatuses::Played;
-				break;
-			case ClientStateEnum::Paused:
-				Status = LEDControllerStatuses::Paused;
-				showNext = true;
-				cyclogrammFile.seek(cyclogrammFile.position() - FrameBytes);
-				Show();
-				break;
-			default:
-				return;
-		}
-	}
-}
-
 void RLCLedController::Stop()
 {
 	if(!IsInitialized) {
@@ -137,11 +100,13 @@ void RLCLedController::NextFrame()
 		}
 		showNext = true;
 		framePosition++;
+		/*
 		Time now = TimeNow();
 		logger.Print("Current frame: ", false); logger.Print("", framePosition, false); logger.Print(", ", false);
 		logger.Print("", now.GetSeconds(), false); logger.Print("sec, ", false); logger.Print("", now.GetMicroseconds(), false); logger.Print("us");
 		Time curPlay = GetCurrentPlayTime();
 		logger.Print("", curPlay.GetSeconds(), false); logger.Print("sec, ", false); logger.Print("", curPlay.GetMicroseconds(), false); logger.Print("us");
+		*/
 	}
 }
 
@@ -163,6 +128,51 @@ void RLCLedController::ResetPosition()
 {
 	cyclogrammFile.seek(0);
 	framePosition = 0;
+}
+
+inline uint64_t RLCLedController::GetFrameBytePosition(uint64_t framePos)
+{
+	return (uint64_t)framePos * (uint64_t)FrameBytes;
+}
+
+
+#pragma region Time dependent
+
+//запуск циклограммы с нужного момента времени циклограммы. ¬ заданное врем€.
+//launchFromTime - врем€ в циклограмме с которого должно начатьс€ воспроизведение
+//lauchTime - реальное врем€ в которое должен произойти запуск
+void RLCLedController::PlayFrom(Time& launchFromTime, Time& lauchTime)
+{
+	if(!IsInitialized) {
+		return;
+	}
+	if(SetLaunchTime(launchFromTime, lauchTime)) {
+		Status = LEDControllerStatuses::Played;
+		logger.Print("LED controller start play.");
+	}
+}
+
+void RLCLedController::Rewind(Time& launchFromTime, Time& lauchTime, ClientStateEnum& clientState)
+{
+	if(!IsInitialized) {
+		return;
+	}
+	if(SetLaunchTime(launchFromTime, lauchTime)) {
+		logger.Print("Received status: ", false); logger.Print(ToString(clientState));
+		switch(clientState) {
+			case ClientStateEnum::Playing:
+				Status = LEDControllerStatuses::Played;
+				break;
+			case ClientStateEnum::Paused:
+				Status = LEDControllerStatuses::Paused;
+				showNext = true;
+				cyclogrammFile.seek(cyclogrammFile.position() - FrameBytes);
+				Show();
+				break;
+			default:
+				return;
+		}
+	}
 }
 
 bool RLCLedController::SetLaunchTime(Time& launchFromTime, Time& sendTime)
@@ -208,11 +218,6 @@ uint32_t RLCLedController::GetFrameFromTime(Time& time)
 	return time.TotalMicroseconds / (uint32_t)1000 / frameTime;
 }
 
-inline uint64_t RLCLedController::GetFrameBytePosition(uint64_t framePos)
-{
-	return (uint64_t)framePos * (uint64_t)FrameBytes;
-}
-
 Time RLCLedController::GetCurrentPlayTime()
 {
 	return Time((uint64_t)framePosition * (uint64_t)frameTime * (uint64_t)1000);
@@ -222,3 +227,5 @@ Time RLCLedController::GetCyclogrammLength()
 {
 	return Time((cyclogrammFile.size() / FrameBytes) * frameTime * 1000);
 }
+
+#pragma endregion Time dependent
