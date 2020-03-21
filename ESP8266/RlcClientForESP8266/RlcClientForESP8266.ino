@@ -463,6 +463,17 @@ void DefaultLight() {
 	}
 }
 
+void ClearLight()
+{
+	if(!rlcLedController->IsInitialized) {
+		return;
+	}
+	FastLED.clear(true);
+	for(size_t i = 0; i < rlcLedController->PWMChannelCount; i++) {
+		PinWrite(rlcLedController->PWMChannels[i], ANALOG_LOW);
+	}	
+}
+
 void WaitingTimeSynchronization(IPAddress& ipAddress, uint16_t port)
 {
 	FastLED.showColor(CRGB::Green);
@@ -513,6 +524,7 @@ void CheckWiredStart()
 	// проверяем нажата ли кнопка
 	// если нажата, то buttonState будет LOW:
 	if(wiredButtonState == LOW && wiredStartIsInitialized && !wiredStarted) {
+		ClearLight();
 		logger->Print("Programm started");
 		tickerFrame.attach_ms(rlcLedController->frameTime, NextFrameHandler);
 		rlcLedController->Play();
@@ -576,6 +588,7 @@ void setup()
 	
 	logger->Print("--------------------");
 	if(wiredMode) {
+		DefaultLight();
 		logger->Print("Wired mode enabled");
 	}
 	else {
