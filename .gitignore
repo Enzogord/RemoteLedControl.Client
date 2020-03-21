@@ -1,4 +1,6 @@
 .vs/*
+/__vm/*
+/Debug/*
 /ESP8266/RlcClientForESP8266/__vm/*
 /ESP8266/RlcClientForESP8266/Debug/*
 /ESP8266/TestLibraryForESP8266/
