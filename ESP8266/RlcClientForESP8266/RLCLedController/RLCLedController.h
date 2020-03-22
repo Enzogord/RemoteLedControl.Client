@@ -47,6 +47,8 @@ public:
 
 	void Initialize(FastLedInitialization initializerMethod, File &cyclogrammFile, ReopenFile reopenFileMethod);
 
+	bool defaultLightOn;
+
 	void Play();
 	void PlayFrom(Time &launchFromTime, Time &lauchTime);
 	void Rewind(Time &launchFromTime, Time &lauchTime, ClientStateEnum &clientState);

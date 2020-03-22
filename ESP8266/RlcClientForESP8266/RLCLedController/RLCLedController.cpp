@@ -26,6 +26,7 @@ void RLCLedController::Play()
 	if(!IsInitialized) {
 		return;
 	}
+	defaultLightOn = false;
 	Status = LEDControllerStatuses::Played;
 	logger.Print("LED controller start play.");
 }
@@ -35,6 +36,7 @@ void RLCLedController::Stop()
 	if(!IsInitialized) {
 		return;
 	}
+	defaultLightOn = false;
 	FastLED.clear(true);
 	for(unsigned int i = 0; i < PWMChannelCount; i++) {
 		PinWrite(PWMChannels[i], LOW);
@@ -49,6 +51,7 @@ void RLCLedController::Pause()
 	if(!IsInitialized) {
 		return;
 	}
+	defaultLightOn = false;
 	Status = LEDControllerStatuses::Paused;
 	logger.Print("LED controller paused.");
 }
@@ -146,6 +149,7 @@ void RLCLedController::PlayFrom(Time& launchFromTime, Time& lauchTime)
 	if(!IsInitialized) {
 		return;
 	}
+	defaultLightOn = false;
 	if(SetLaunchTime(launchFromTime, lauchTime)) {
 		Status = LEDControllerStatuses::Played;
 		logger.Print("LED controller start play.");
@@ -157,6 +161,7 @@ void RLCLedController::Rewind(Time& launchFromTime, Time& lauchTime, ClientState
 	if(!IsInitialized) {
 		return;
 	}
+	defaultLightOn = false;
 	if(SetLaunchTime(launchFromTime, lauchTime)) {
 		logger.Print("Received status: ", false); logger.Print(ToString(clientState));
 		switch(clientState) {

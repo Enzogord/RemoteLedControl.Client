@@ -42,6 +42,7 @@ ILogger* logger;
 Ticker tickerFrame;
 Ticker tickerBattery;
 Ticker tickerClock;
+Ticker defaultLightTicker;
 
 File cyclogrammFile;
 File settingFile;
@@ -444,22 +445,13 @@ void DefaultLight() {
 	{
 		return;
 	}
-	//¬ключение свечени€ по умолчанию, если включена настройка
-	if (rlcSettings.DefaultLightOn)
-	{
-		FastLED.showColor(CRGB::White);
-		for (size_t i = 0; i < rlcLedController->PWMChannelCount; i++)
-		{
-			PinWrite(rlcLedController->PWMChannels[i], ANALOG_HIGH);
-		}
-	}
-	else
-	{
-		FastLED.clear(true);
-		for (size_t i = 0; i < rlcLedController->PWMChannelCount; i++)
-		{
-			PinWrite(rlcLedController->PWMChannels[i], ANALOG_LOW);
-		}
+	if(rlcLedController->defaultLightOn == false) {
+		defaultLightTicker.detach();
+	};
+
+	FastLED.showColor(CRGB::White);
+	for(size_t i = 0; i < rlcLedController->PWMChannelCount; i++) {
+		PinWrite(rlcLedController->PWMChannels[i], ANALOG_HIGH);
 	}
 }
 
@@ -524,7 +516,6 @@ void CheckWiredStart()
 	// провер€ем нажата ли кнопка
 	// если нажата, то buttonState будет LOW:
 	if(wiredButtonState == LOW && wiredStartIsInitialized && !wiredStarted) {
-		ClearLight();
 		logger->Print("Programm started");
 		tickerFrame.attach_ms(rlcLedController->frameTime, NextFrameHandler);
 		rlcLedController->Play();
@@ -532,6 +523,15 @@ void CheckWiredStart()
 		//конец последовательности воспроизведени€
 		wiredStartIsInitialized = false;
 	}
+}
+
+void StartDefaultLightTicker()
+{
+	if(!rlcLedController->IsInitialized) {
+		return;
+	}
+	rlcLedController->defaultLightOn = true;
+	defaultLightTicker.attach_ms(50, DefaultLight);
 }
 
 void WiredSetup()
@@ -550,7 +550,6 @@ void WirelessSetup()
 	WaitingTimeSynchronization(serverIP, NTP_PORT);
 	WaitingConnectToRLCServer(serverIP, rlcSettings.UDPPort);
 
-	DefaultLight();
 	tickerBattery.attach_ms(1000, BatteryChargeHandler);
 }
 
@@ -588,13 +587,13 @@ void setup()
 	
 	logger->Print("--------------------");
 	if(wiredMode) {
-		DefaultLight();
 		logger->Print("Wired mode enabled");
 	}
 	else {
 		logger->Print("Wireless mode enabled");
 		WirelessSetup();
 	}
+	StartDefaultLightTicker();
 }
 
 void loop(void) {
