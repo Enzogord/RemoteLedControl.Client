@@ -7,12 +7,11 @@
 class SntpClient : public ISntpClient
 {
 private:
-	WiFiUDP& udpClient;
 	IPAddress& ipAddress;
 	uint16_t port;
 
 public:
-	SntpClient(WiFiUDP& udpClientRef, IPAddress& ipAddressRef, uint16_t port);
+	SntpClient(IPAddress& ipAddressRef, uint16_t port);
 
 	// Inherited via ISntpClient
 	virtual bool SendSntpRequest(SntpPackage& sntpPackage, int responseDelayMs = 1000);

@@ -1,14 +1,16 @@
 #include "SntpClient.h"
 #include <TimeNow.h>
 
-SntpClient::SntpClient(WiFiUDP& udpClientRef, IPAddress& ipAddressRef, uint16_t port)
-	: udpClient(udpClientRef), ipAddress(ipAddressRef)
+SntpClient::SntpClient(IPAddress& ipAddressRef, uint16_t port)
+	: ipAddress(ipAddressRef)
 {
 	SntpClient::port = port;
 }
 
 bool SntpClient::SendSntpRequest(SntpPackage& sntpPackage, int responseDelayMs)
 {
+	WiFiUDP udpClient;
+	udpClient.begin(port);
 	udpClient.flush();
 	udpClient.setTimeout(responseDelayMs);
 	udpClient.beginPacket(ipAddress, port);
@@ -28,9 +30,10 @@ bool SntpClient::SendSntpRequest(SntpPackage& sntpPackage, int responseDelayMs)
 			sntpPackage.SetServerReceiveTime(packetBuffer);
 			sntpPackage.SetServerSendingTime(packetBuffer);
 			sntpPackage.SetReceiveTime(receiveTime);
+			udpClient.stop();
 			return true;
 		}
 	}
-
+	udpClient.stop();
 	return false;
 }

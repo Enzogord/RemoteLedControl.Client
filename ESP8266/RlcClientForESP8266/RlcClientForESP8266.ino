@@ -30,8 +30,6 @@
 //таймаут ожидания при запросе по мультикасту
 #define SERVER_IP_TIMEOUT 2000UL
 #define NTP_PORT 11011
-//таймаут ожидания успешного соединения в рабочем цикле, мс
-#define TCP_CONNECTION_TIMEOUT_ON_WORK 10UL
 
 //значения HIGH и LOW специально инвертированы из-за оборудования
 #define ANALOG_HIGH 255
@@ -41,17 +39,15 @@ ILogger* logger;
 
 Ticker tickerFrame;
 Ticker tickerBattery;
-Ticker tickerClock;
 Ticker defaultLightTicker;
 
+WiFiUDP udp;
 File cyclogrammFile;
 File settingFile;
 IPAddress broadcastAddress;
 IPAddress serverIP = IPAddress(0, 0, 0, 0);
 String cyclogrammFileName = "Data.cyc";
 uint8* rlcMessageBuffer = new uint8[RLC_MESSAGE_LENGTH];
-WiFiClient tcpClient;
-WiFiUDP udp;
 unsigned long lastTryingConnectionTime;
 ClientStateEnum clientState;
 RLCSetting rlcSettings;
@@ -144,18 +140,21 @@ void WaitingServerIPAddress()
 	logger->Print("Waiting Server IP address");
 	RLCMessage requestServerIPMessage = messageFactory.RequestServerIP(clientState);
 	uint8_t* requestBytes = requestServerIPMessage.GetBytes();
+	WiFiUDP udpClient;
+	udpClient.begin(rlcSettings.UDPPort);
+
 	do {
 		logger->Print("Request Server IP address. ");
-		udp.begin(rlcSettings.UDPPort);
-		udp.beginPacket(broadcastAddress, rlcSettings.UDPPort);
-		udp.write(requestBytes, RLC_MESSAGE_LENGTH);
-		udp.endPacket();
+		udpClient.beginPacket(broadcastAddress, rlcSettings.UDPPort);
+		udpClient.write(requestBytes, RLC_MESSAGE_LENGTH);
+		udpClient.endPacket();
 		unsigned long timeCheckpoint = millis();
 		while (serverIP == IPAddress(0, 0, 0, 0) && (millis() - timeCheckpoint) < SERVER_IP_TIMEOUT)
 		{
-			if (udp.available()) {
+			int packetLength = udpClient.parsePacket();
+			if(packetLength == RLC_MESSAGE_LENGTH) {
 				memset(rlcMessageBuffer, 0, RLC_MESSAGE_LENGTH);
-				udp.readBytes(rlcMessageBuffer, RLC_MESSAGE_LENGTH);
+				udpClient.readBytes(rlcMessageBuffer, RLC_MESSAGE_LENGTH);
 				logger->Print("Received server IP packet: ", rlcMessageBuffer[5]);
 				RLCMessage response = messageParser.Parse(rlcMessageBuffer);
 				if (!response.IsInitialized) {
@@ -173,82 +172,55 @@ void WaitingServerIPAddress()
 				serverIP = response.IP;
 			}
 		}
-		udp.stopAll();
+		
 		if (serverIP == IPAddress(0, 0, 0, 0))
 		{
 			logger->Print("Failed to receive server IP address, retry.");
 		}
 	} while (serverIP == IPAddress(0, 0, 0, 0));
+	udpClient.stop();
 	logger->Print("Received server IP: ", serverIP);
 }
 
-//ожидание успешного TCP соединения
-void WaitingConnectToRLCServer(IPAddress& ipAddress, uint16_t port)
-{
-	logger->Print("Waiting connect to ", ipAddress, false); logger->Print(":", port);
-	FastLED.showColor(CRGB::Blue);
-	unsigned long connectionTimePoint = millis();
+inline void StartReceiveFromRLCServer() {
+	udp.begin(rlcSettings.UDPPort);
+}
 
-	int tcpConnected = 0;
-	while (!tcpConnected)
-	{
-		if ((millis() - connectionTimePoint) >= 1000)
+void ReadMessagesFromServer() {
+	while(true) {
+		int packetLength = udp.parsePacket();
+		if(!packetLength) {
+			return;
+		}
+		if(packetLength == RLC_MESSAGE_LENGTH) 
 		{
-			tcpConnected = TryConnectToRLCServer(ipAddress, port, 1000UL);
+			ReadRLCMessage();
+		}
+		else
+		{
+			//else ignoring incorrect packet
+			uint8* packetBuffer = new uint8[packetLength];
+			udp.readBytes(packetBuffer, packetLength);
+			delete(packetBuffer);
 		}
 	}
 }
 
-//попытка однократного TCP соединения 
-int TryConnectToRLCServer(IPAddress& ipAddress, uint16_t port, unsigned long timeout)
-{
-	int tcpConnected = 0;
-	//пересоздаем клиент, потому что при разрыве связи не может заново подключиться
-	tcpClient = WiFiClient();
-	logger->Print("Connecting to TCP server");
-	tcpClient.setTimeout(timeout);
-
-	tcpConnected = tcpClient.connect(ipAddress, port);
-
-	if (tcpConnected)
-	{
-		lastTryingConnectionTime = millis();
-		tcpClient.setTimeout(0);
-		tcpClient.keepAlive(2, 1);
-		logger->Print("TCP connected.");
+inline void ReadRLCMessage() {
+	memset(rlcMessageBuffer, 0, RLC_MESSAGE_LENGTH);
+	udp.readBytes(rlcMessageBuffer, RLC_MESSAGE_LENGTH);
+	RLCMessage message = messageParser.Parse(rlcMessageBuffer);
+	if (message.IsInitialized && message.Key == rlcSettings.ProjectKey && message.SourceType == SourceTypeEnum::Server) {
+		OnReceiveMessage(message);
 	}
-	return tcpConnected;
 }
 
-void ReadTCPConnection()
-{
-	if (tcpClient.connected()) {
-		connectionInProgress = false;
-	}
-
-	if (!tcpClient.connected() && !connectionInProgress)
-	{
-		logger->Print("Disconnected. Try reconnect");
-		TryConnectToRLCServer(serverIP, rlcSettings.UDPPort, TCP_CONNECTION_TIMEOUT_ON_WORK);
-		lastTryingConnectionTime = millis();
-		//не задерживаем главный цикл после попытки подключения, сразу возвращая управление
-		return;
-	}
-
-	uint8_t packetBuffer[1024];
-
-	while (tcpClient.available()) {
-		logger->Print("[TCP] Received data form server: ");
-		tcpClient.readBytes(packetBuffer, 1024);
-		RLCMessage message = messageParser.Parse(packetBuffer);
-		logger->Print("message.IsInitialized: ", message.IsInitialized, true);
-		logger->Print("message.Key: ", message.Key);
-		logger->Print("message.SourceType: ", ToString(message.SourceType));
-		if (message.IsInitialized && message.Key == rlcSettings.ProjectKey && message.SourceType == SourceTypeEnum::Server)
-		{
-			OnReceiveMessage(message);
-		}
-	}
+void SendMessage(RLCMessage& message) {
+	uint8_t* buffer = message.GetBytes();
+	udp.beginPacket(serverIP, rlcSettings.UDPPort);
+	udp.write(buffer, RLC_MESSAGE_LENGTH);
+	udp.endPacket();
+	delete(buffer);
 }
 
 void OnReceiveMessage(RLCMessage& message)
@@ -325,12 +297,6 @@ void CheckStartFrameTicker(Time sendTime)
 	frameTickerStarted = true;
 }
 
-void SendMessage(RLCMessage& message) {
-	uint8_t* buffer = message.GetBytes();
-	tcpClient.write(buffer, RLC_MESSAGE_LENGTH);
-	delete(buffer);
-}
-
 void OpenCyclogrammFile()
 {
 	if (!cyclogrammFile) {
@@ -347,18 +313,14 @@ void NextFrameHandler()
 	lastFrameTime = TimeNow();
 }
 
-void BatteryChargeHandler()
+inline void BatteryChargeHandler()
 {
-	if (tcpClient.connected())
-	{
-		sendBatteryCharge = true;
-	}
-
+	sendBatteryCharge = true;
 }
 
 void SendBatteryCharge()
 {
-	if (sendBatteryCharge && tcpClient.connected())
+	if (sendBatteryCharge)
 	{
 		uint16_t chargeValue = (uint16_t)analogRead(A0);
 		RLCMessage batteryChargeMessage = messageFactory.BatteryCharge(clientState, chargeValue);
@@ -440,6 +402,7 @@ void FastLEDInitialization()
 	FastLED.setBrightness(rlcSettings.SPILedGlobalBrightness);
 }
 
+
 void DefaultLight() {
 	if (!rlcLedController->IsInitialized)
 	{
@@ -455,6 +418,7 @@ void DefaultLight() {
 	}
 }
 
+
 void ClearLight()
 {
 	if(!rlcLedController->IsInitialized) {
@@ -469,35 +433,10 @@ void ClearLight()
 void WaitingTimeSynchronization(IPAddress& ipAddress, uint16_t port)
 {
 	FastLED.showColor(CRGB::Green);
-	udp.begin(port);
 
-	ISntpClient* sntpClient = new SntpClient(udp, serverIP, NTP_PORT);
+	ISntpClient* sntpClient = new SntpClient(ipAddress, port);
 	TimeSynchronization timeSync = TimeSynchronization(*sntpClient, *logger);
 	timeSync.SynchronizeMultiple(10, 20000);
-
-	udp.stopAll();
-	if(DEBUG) {
-		uint32_t clockStartDelay = 1000 - TimeNow().GetMilliseconds();
-		delay(clockStartDelay);
-		tickerClock.attach_ms(1000, RequestPrintTime);
-	}	
-}
-
-bool needPrintTime = false;
-void PrintTime()
-{
-	if(needPrintTime) {
-		Time now = TimeNow();
-		logger->Print("Now: ", now.GetSeconds(), false);
-		logger->Print("sec, ", now.GetMicroseconds(), false);
-		logger->Print("us");
-		needPrintTime = false;
-	}
-}
-
-void RequestPrintTime()
-{
-	needPrintTime = true;
 }
 
 void CheckWiredStart()
@@ -548,9 +487,9 @@ void WirelessSetup()
 	WiFiConnect();
 	WaitingServerIPAddress();
 	WaitingTimeSynchronization(serverIP, NTP_PORT);
-	WaitingConnectToRLCServer(serverIP, rlcSettings.UDPPort);
+	StartReceiveFromRLCServer();
 
-	tickerBattery.attach_ms(1000, BatteryChargeHandler);
+	tickerBattery.attach_ms(5000, BatteryChargeHandler);
 }
 
 void setup()
@@ -601,9 +540,8 @@ void loop(void) {
 		CheckWiredStart();
 	}
 	else {
-		PrintTime();
 		SendBatteryCharge();
-		ReadTCPConnection();
+		ReadMessagesFromServer();
 	}
 	
 	rlcLedController->Show();
