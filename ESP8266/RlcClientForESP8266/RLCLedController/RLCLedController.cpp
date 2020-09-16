@@ -19,6 +19,7 @@ void RLCLedController::Initialize(FastLedInitialization initializerMethod, File&
 
 	FrameBytes = (LedCount * 3) + PWMChannelCount;
 	IsInitialized = true;
+	NextFrameDataPreparation();
 }
 
 void RLCLedController::Play()
@@ -57,38 +58,55 @@ void RLCLedController::Pause()
 }
 
 void RLCLedController::Show()
-{
-	if(!IsInitialized) {
+{	
+	if(!IsInitialized || !showNext) {
 		return;
 	}
-	if(!cyclogrammFile) {
-		reopenFileMethod();
-		if(cyclogrammFile && cyclogrammFile.available()) {
-			SetPosition(framePosition);
-		}
+
+	if(cyclogrammEnded) {
+		Stop();
+		logger.Print("Cyclogramm ended. LED controller stoped.");
+		return;
 	}
-	if(showNext) {
-		if(cyclogrammFile.available() >= FrameBytes) {
-			unsigned long a1 = millis();
-			for(unsigned int i = 0; i < LedCount; i++) {
-				LedArray[i].r = cyclogrammFile.read();
-				LedArray[i].g = cyclogrammFile.read();
-				LedArray[i].b = cyclogrammFile.read();
-			}
 
-			for(unsigned int i = 0; i < PWMChannelCount; i++) {
-				uint8_t pwmOutput = cyclogrammFile.read();
-				PinWrite(PWMChannels[i], pwmOutput);
-			}
-			FastLED.show();
-		}
+	FastLED.show();
+	showNext = false;
+	NextFrameDataPreparation();
+}
 
-		if(cyclogrammFile && cyclogrammFile.available() <= FrameBytes) {
-			Stop();
-			logger.Print("Cyclogramm ended. LED controller stoped.");
-		}
+bool RLCLedController::CheckFileAvailability() {
+	if(cyclogrammFile) {
+		return true;
+	}
+	else {
+		reopenFileMethod();
+	}
 
-		showNext = false;
+	if(!cyclogrammFile) {
+		return false;
+	}
+
+	SetPosition(framePosition);	
+	return true;
+}
+
+void RLCLedController::NextFrameDataPreparation() {
+	if(!CheckFileAvailability() || cyclogrammFile.available() < FrameBytes) {
+		cyclogrammEnded = true;
+		return;
+	}
+
+	cyclogrammEnded = false;
+
+	for (unsigned int i = 0; i < LedCount; i++) {
+		LedArray[i].r = cyclogrammFile.read();
+		LedArray[i].g = cyclogrammFile.read();
+		LedArray[i].b = cyclogrammFile.read();
+	}
+
+	for (unsigned int i = 0; i < PWMChannelCount; i++) {
+		uint8_t pwmOutput = cyclogrammFile.read();
+		PinWrite(PWMChannels[i], pwmOutput);
 	}
 }
 
@@ -103,13 +121,6 @@ void RLCLedController::NextFrame()
 		}
 		showNext = true;
 		framePosition++;
-		/*
-		Time now = TimeNow();
-		logger.Print("Current frame: ", false); logger.Print("", framePosition, false); logger.Print(", ", false);
-		logger.Print("", now.GetSeconds(), false); logger.Print("sec, ", false); logger.Print("", now.GetMicroseconds(), false); logger.Print("us");
-		Time curPlay = GetCurrentPlayTime();
-		logger.Print("", curPlay.GetSeconds(), false); logger.Print("sec, ", false); logger.Print("", curPlay.GetMicroseconds(), false); logger.Print("us");
-		*/
 	}
 }
 
@@ -123,14 +134,14 @@ void RLCLedController::SetPosition(uint64_t framePosition)
 		Stop();
 		logger.Print("Position out of range cyclogramm size or set position to last frame. LED controller stoped.");
 	}
-	cyclogrammFile.seek(frameBytePosition);
+	cyclogrammFile.seek(frameBytePosition);	
 	RLCLedController::framePosition = framePosition;
+	NextFrameDataPreparation();
 }
 
 void RLCLedController::ResetPosition()
 {
-	cyclogrammFile.seek(0);
-	framePosition = 0;
+	SetPosition(0);
 }
 
 inline uint64_t RLCLedController::GetFrameBytePosition(uint64_t framePos)

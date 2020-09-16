@@ -4,6 +4,7 @@ RLCMessage::RLCMessage()
 {
 	SourceType = SourceTypeEnum::NotSet;
 	Key = 0;
+	MessageId = 0;
 	MessageType = MessageTypeEnum::NotSet;
 	ClientNumber = 0;
 	ClientState = ClientStateEnum::NotSet;
@@ -28,6 +29,11 @@ uint8_t* RLCMessage::GetBytes()
 	messageBuffer[byteIndex++] = (uint8_t)(Key >> 16);
 	messageBuffer[byteIndex++] = (uint8_t)(Key >> 8);
 	messageBuffer[byteIndex++] = (uint8_t)(Key >> 0);
+
+	messageBuffer[byteIndex++] = (uint8_t)(MessageId >> 24);
+	messageBuffer[byteIndex++] = (uint8_t)(MessageId >> 16);
+	messageBuffer[byteIndex++] = (uint8_t)(MessageId >> 8);
+	messageBuffer[byteIndex++] = (uint8_t)(MessageId >> 0);
 
 	messageBuffer[byteIndex++] = (uint8_t)MessageType;
 

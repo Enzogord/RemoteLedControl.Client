@@ -121,6 +121,7 @@
     <ClInclude Include="RLCLedController\RLCLedController.h" />
     <ClInclude Include="RLCLibraryImplementations\Logger\SerialLogger.h" />
     <ClInclude Include="RLCLibraryImplementations\Time\SntpClient.h" />
+    <ClInclude Include="RLCMessage\MessageIdRegistry.h" />
     <ClInclude Include="RLCMessage\RLCEnums.h" />
     <ClInclude Include="RLCMessage\RLCMessage.h" />
     <ClInclude Include="RLCMessage\RLCMessageFactory.h" />
@@ -133,6 +134,7 @@
     <ClCompile Include="RLCLedController\RLCLedController.cpp" />
     <ClCompile Include="RLCLibraryImplementations\Logger\SerialLogger.cpp" />
     <ClCompile Include="RLCLibraryImplementations\Time\SntpClient.cpp" />
+    <ClCompile Include="RLCMessage\MessageIdRegistry.cpp" />
     <ClCompile Include="RLCMessage\RLCMessage.cpp" />
     <ClCompile Include="RLCMessage\RLCMessageFactory.cpp" />
     <ClCompile Include="RLCMessage\RLCMessageParser.cpp" />

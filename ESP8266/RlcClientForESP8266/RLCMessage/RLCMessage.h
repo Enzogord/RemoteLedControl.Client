@@ -18,6 +18,7 @@ public:
 
 	SourceTypeEnum SourceType;
 	uint32_t Key;
+	int32_t MessageId;
 	MessageTypeEnum MessageType;;
 	uint16_t ClientNumber;
 	ClientStateEnum ClientState;

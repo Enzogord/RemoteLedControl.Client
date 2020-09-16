@@ -16,6 +16,7 @@
 #include "RLCMessage/RLCMessageParser.h"
 #include "RLCMessage/RLCEnums.h"
 #include "RLCMessage/RLCMessageFactory.h"
+#include "RLCMessage/MessageIdRegistry.h"
 #include "RLCLedController/RLCLedController.h"
 #include "Service/PinController.h"
 #include "RLCLibraryImplementations/Logger/SerialLogger.h"
@@ -49,12 +50,12 @@ IPAddress serverIP = IPAddress(0, 0, 0, 0);
 String cyclogrammFileName = "Data.cyc";
 uint8* rlcMessageBuffer = new uint8[RLC_MESSAGE_LENGTH];
 unsigned long lastTryingConnectionTime;
-ClientStateEnum clientState;
 RLCSetting rlcSettings;
 RLCMessageParser messageParser;
 RLCMessageFactory messageFactory;
 boolean connectionInProgress = false;
 RLCLedController* rlcLedController;
+MessageIdRegistry messageIdsRegistry;
 bool sendBatteryCharge;
 
 #pragma region Проводной запуск
@@ -106,7 +107,6 @@ void Initializations()
 	rlcLedController = new RLCLedController(*logger);
 
 	pinMode(A0, INPUT);
-	clientState = ClientStateEnum::Stoped;
 
 	// Отключение точки доступа
 	WiFi.softAPdisconnect(true);
@@ -138,7 +138,7 @@ void WaitingServerIPAddress()
 {
 	FastLED.showColor(CRGB::Magenta);
 	logger->Print("Waiting Server IP address");
-	RLCMessage requestServerIPMessage = messageFactory.RequestServerIP(clientState);
+	RLCMessage requestServerIPMessage = messageFactory.RequestServerIP(GetClientState());
 	uint8_t* requestBytes = requestServerIPMessage.GetBytes();
 	WiFiUDP udpClient;
 	udpClient.begin(rlcSettings.UDPPort);
@@ -199,6 +199,7 @@ void ReadMessagesFromServer() {
 		else
 		{
 			//else ignoring incorrect packet
+			logger->Print("Ignoring packet with length: ", packetLength);
 			uint8* packetBuffer = new uint8[packetLength];
 			udp.readBytes(packetBuffer, packetLength);
 			delete(packetBuffer);
@@ -210,10 +211,17 @@ inline void ReadRLCMessage() {
 	memset(rlcMessageBuffer, 0, RLC_MESSAGE_LENGTH);
 	udp.readBytes(rlcMessageBuffer, RLC_MESSAGE_LENGTH);
 	RLCMessage message = messageParser.Parse(rlcMessageBuffer);
+	logger->Print("Receive message with type: ", rlcMessageBuffer[5]);
 	if (message.IsInitialized && message.Key == rlcSettings.ProjectKey && message.SourceType == SourceTypeEnum::Server) {
+		if(messageIdsRegistry.Contains(message.MessageId)) {
+			SendClientInfo();
+			return;
+		}
 		OnReceiveMessage(message);
+		messageIdsRegistry.AppendId(message.MessageId);
 	}
 }
+
 
 void SendMessage(RLCMessage& message) {
 	uint8_t* buffer = message.GetBytes();
@@ -225,11 +233,11 @@ void SendMessage(RLCMessage& message) {
 
 void OnReceiveMessage(RLCMessage& message)
 {
-	RLCMessage responseMessage;
 	switch (message.MessageType)
 	{
 	case MessageTypeEnum::Play:
 		logger->Print("Receive Play message");
+		CheckStartFrameTicker(message.SendTime);
 		rlcLedController->Play();
 		break;
 	case MessageTypeEnum::Pause:
@@ -251,13 +259,31 @@ void OnReceiveMessage(RLCMessage& message)
 		rlcLedController->Rewind(message.PlayFromTime, message.SendTime, message.ClientState);
 		break;
 	case MessageTypeEnum::RequestClientInfo:
-		responseMessage = messageFactory.SendClientInfo(clientState);
-		SendMessage(responseMessage);
+		SendClientInfo();
 		break;
 	default:
 		logger->Print("Receive message: ", ToString(message.MessageType));
 		break;
 	}
+}
+
+ClientStateEnum GetClientState() {
+	switch (rlcLedController->Status)
+	{
+	case LEDControllerStatuses::Stoped:   
+		return ClientStateEnum::Stoped;
+	case LEDControllerStatuses::Played:   
+		return ClientStateEnum::Playing;
+	case LEDControllerStatuses::Paused:  
+		return ClientStateEnum::Paused;
+	default:
+		return ClientStateEnum::NotSet;
+	}
+}
+
+void SendClientInfo() {
+	RLCMessage message = messageFactory.SendClientInfo(GetClientState());
+	SendMessage(message);
 }
 
 bool frameTickerStarted;
@@ -306,11 +332,9 @@ void OpenCyclogrammFile()
 	}
 }
 
-Time lastFrameTime;
-void NextFrameHandler()
+inline void NextFrameHandler()
 {
 	rlcLedController->NextFrame();
-	lastFrameTime = TimeNow();
 }
 
 inline void BatteryChargeHandler()
@@ -323,7 +347,7 @@ void SendBatteryCharge()
 	if (sendBatteryCharge)
 	{
 		uint16_t chargeValue = (uint16_t)analogRead(A0);
-		RLCMessage batteryChargeMessage = messageFactory.BatteryCharge(clientState, chargeValue);
+		RLCMessage batteryChargeMessage = messageFactory.BatteryCharge(GetClientState(), chargeValue);
 
 		SendMessage(batteryChargeMessage);
 		sendBatteryCharge = false;
@@ -532,7 +556,7 @@ void setup()
 		logger->Print("Wireless mode enabled");
 		WirelessSetup();
 	}
-	StartDefaultLightTicker();
+	//StartDefaultLightTicker();
 }
 
 void loop(void) {

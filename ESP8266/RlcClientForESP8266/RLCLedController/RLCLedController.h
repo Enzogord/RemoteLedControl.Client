@@ -10,9 +10,8 @@ typedef void (*FastLedInitialization)();
 typedef void (*ReopenFile)();
 
 enum class LEDControllerStatuses {
-	WaitingForPlay,
-	Played,
 	Stoped,
+	Played,
 	Paused
 };
 
@@ -20,9 +19,8 @@ inline const char* ToString(LEDControllerStatuses ledControlledStatus)
 {
 	switch(ledControlledStatus)
 	{
-	case LEDControllerStatuses::WaitingForPlay:   return "WaitingForPlay";
-	case LEDControllerStatuses::Played:   return "Played";
 	case LEDControllerStatuses::Stoped:   return "Stoped";
+	case LEDControllerStatuses::Played:   return "Played";
 	case LEDControllerStatuses::Paused:   return "Paused";
 	default:      return "None";
 	}
@@ -55,6 +53,7 @@ public:
 	void Stop();
 	void Pause();
 	void Show();
+	
 	void NextFrame();
 
 private:
@@ -62,6 +61,7 @@ private:
 	ReopenFile reopenFileMethod;
 	File cyclogrammFile;
 	boolean showNext = false;
+	boolean cyclogrammEnded = false;
 
 	// Номер кадр с которого будет начато воспроизведение
 	//unsigned long launchFrame;
@@ -88,5 +88,11 @@ private:
 	Time GetCyclogrammLength();
 
 	uint32_t GetFrameFromTime(Time& time);
+
+	//Подготовка данных для следующего кадра
+	void NextFrameDataPreparation();
+
+	//Проверяет доступность файла циклограммы. Если не файл не доступен, пытается переоткрыть его.
+	bool CheckFileAvailability();
 };
 

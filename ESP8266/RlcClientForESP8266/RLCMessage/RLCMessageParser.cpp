@@ -24,6 +24,9 @@ RLCMessage RLCMessageParser::Parse(uint8_t messageBuffer[])
 
 	//Key
 	message.Key = (messageBuffer[index++] << 24) + (messageBuffer[index++] << 16) + (messageBuffer[index++] << 8) + (messageBuffer[index++]);
+
+	//MessageId
+	message.MessageId = (messageBuffer[index++] << 24) + (messageBuffer[index++] << 16) + (messageBuffer[index++] << 8) + (messageBuffer[index++]);
 	
 	//MessageType
 	if (!TryParseMessageType(message.MessageType, messageBuffer[index++]))
