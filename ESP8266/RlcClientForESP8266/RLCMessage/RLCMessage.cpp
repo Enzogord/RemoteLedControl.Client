@@ -9,8 +9,8 @@ RLCMessage::RLCMessage()
 	ClientNumber = 0;
 	ClientState = ClientStateEnum::NotSet;
 	IP = IPAddress(0, 0, 0, 0);
-	PlayFromTime = Time();
-	SendTime = Time();
+	Frame = 0;
+	FrameStartTime = Time();
 }
 
 RLCMessage::~RLCMessage()
@@ -47,10 +47,12 @@ uint8_t* RLCMessage::GetBytes()
 	messageBuffer[byteIndex++] = (uint8_t)(IP[2]);
 	messageBuffer[byteIndex++] = (uint8_t)(IP[3]);
 	
-	SetTimeToArray(PlayFromTime, messageBuffer, byteIndex);
-	byteIndex += 8;
+	messageBuffer[byteIndex++] = (uint8_t)(Frame >> 24);
+	messageBuffer[byteIndex++] = (uint8_t)(Frame >> 16);
+	messageBuffer[byteIndex++] = (uint8_t)(Frame >> 8);
+	messageBuffer[byteIndex++] = (uint8_t)(Frame >> 0);
 
-	SetTimeToArray(SendTime, messageBuffer, byteIndex);
+	SetTimeToArray(FrameStartTime, messageBuffer, byteIndex);
 	byteIndex += 8;
 
 	messageBuffer[byteIndex++] = (uint8_t)(BatteryCharge >> 8);

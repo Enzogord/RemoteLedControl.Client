@@ -1,11 +1,15 @@
 #include "MessageIdRegistry.h"
 
-MessageIdRegistry::MessageIdRegistry(uint8_t poolSize = 10)
+MessageIdRegistry::MessageIdRegistry(uint8_t poolSize)
 {
 	MessageIdRegistry::poolSize = poolSize;
 	messageIds = new int32_t[poolSize];
 	memset(messageIds, 0, poolSize);
 	index = 0;
+}
+
+MessageIdRegistry::MessageIdRegistry() : MessageIdRegistry(10)
+{
 }
 
 MessageIdRegistry::~MessageIdRegistry()

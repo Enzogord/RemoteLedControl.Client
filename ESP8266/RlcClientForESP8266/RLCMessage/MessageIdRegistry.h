@@ -5,6 +5,7 @@
 class MessageIdRegistry
 {
 public:
+	MessageIdRegistry();
 	MessageIdRegistry(uint8_t poolSize);
 	~MessageIdRegistry();
 

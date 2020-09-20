@@ -48,12 +48,11 @@ RLCMessage RLCMessageParser::Parse(uint8_t messageBuffer[])
 	//IPAddress
 	message.IP = IPAddress(messageBuffer[index++], messageBuffer[index++], messageBuffer[index++], messageBuffer[index++]);
 	
-	//Playfrom time
-	message.PlayFromTime = GetTimeFromArray(messageBuffer, index);
-	index += 8;
+	//Frame
+	message.Frame = (messageBuffer[index++] << 24) + (messageBuffer[index++] << 16) + (messageBuffer[index++] << 8) + (messageBuffer[index++]);
 
-	//Send time
-	message.SendTime = GetTimeFromArray(messageBuffer, index);
+	//Playfrom time
+	message.FrameStartTime = GetTimeFromArray(messageBuffer, index);
 	index += 8;
 
 	//BatteryCharge
@@ -88,25 +87,13 @@ bool RLCMessageParser::TryParseMessageType(MessageTypeEnum & messageType, uint8_
 	{
 			//to client
 		case(1):
-			messageType = MessageTypeEnum::Play;
-			return true;
-		case(2):
-			messageType = MessageTypeEnum::Stop;
-			return true;
-		case(3):
-			messageType = MessageTypeEnum::Pause;
-			return true;
-		case(4):
-			messageType = MessageTypeEnum::PlayFrom;
+			messageType = MessageTypeEnum::State;
 			return true;
 		case(5):
 			messageType = MessageTypeEnum::SendServerIP;
 			return true;
 		case(6):
 			messageType = MessageTypeEnum::RequestClientInfo;
-			return true;
-		case(7):
-			messageType = MessageTypeEnum::Rewind;
 			return true;
 
 			//to server

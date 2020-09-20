@@ -19,12 +19,12 @@ public:
 	SourceTypeEnum SourceType;
 	uint32_t Key;
 	int32_t MessageId;
-	MessageTypeEnum MessageType;;
+	MessageTypeEnum MessageType;
 	uint16_t ClientNumber;
 	ClientStateEnum ClientState;
 	IPAddress IP;
-	Time PlayFromTime;
-	Time SendTime;
+	uint32_t Frame;
+	Time FrameStartTime;
 	uint16_t BatteryCharge;
 
 	uint8_t* GetBytes();

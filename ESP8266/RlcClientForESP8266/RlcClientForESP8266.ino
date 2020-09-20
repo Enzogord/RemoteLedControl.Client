@@ -38,9 +38,7 @@
 
 ILogger* logger;
 
-Ticker tickerFrame;
 Ticker tickerBattery;
-Ticker defaultLightTicker;
 
 WiFiUDP udp;
 File cyclogrammFile;
@@ -55,7 +53,7 @@ RLCMessageParser messageParser;
 RLCMessageFactory messageFactory;
 boolean connectionInProgress = false;
 RLCLedController* rlcLedController;
-MessageIdRegistry messageIdsRegistry;
+MessageIdRegistry messageIdsRegistry = MessageIdRegistry();
 bool sendBatteryCharge;
 
 #pragma region Проводной запуск
@@ -211,17 +209,24 @@ inline void ReadRLCMessage() {
 	memset(rlcMessageBuffer, 0, RLC_MESSAGE_LENGTH);
 	udp.readBytes(rlcMessageBuffer, RLC_MESSAGE_LENGTH);
 	RLCMessage message = messageParser.Parse(rlcMessageBuffer);
-	logger->Print("Receive message with type: ", rlcMessageBuffer[5]);
+	logger->Print("Receive message with type: ", rlcMessageBuffer[9]);
 	if (message.IsInitialized && message.Key == rlcSettings.ProjectKey && message.SourceType == SourceTypeEnum::Server) {
 		if(messageIdsRegistry.Contains(message.MessageId)) {
-			SendClientInfo();
+			Response(message.MessageId);
 			return;
 		}
 		OnReceiveMessage(message);
+		Response(message.MessageId);
 		messageIdsRegistry.AppendId(message.MessageId);
 	}
 }
 
+void Response(int32_t messageId)
+{
+	RLCMessage message = messageFactory.SendClientInfo(GetClientState());
+	message.MessageId = messageId;
+	SendMessage(message);
+}
 
 void SendMessage(RLCMessage& message) {
 	uint8_t* buffer = message.GetBytes();
@@ -235,28 +240,9 @@ void OnReceiveMessage(RLCMessage& message)
 {
 	switch (message.MessageType)
 	{
-	case MessageTypeEnum::Play:
-		logger->Print("Receive Play message");
-		CheckStartFrameTicker(message.SendTime);
-		rlcLedController->Play();
-		break;
-	case MessageTypeEnum::Pause:
-		logger->Print("Receive Pause message");
-		rlcLedController->Pause();
-		break;
-	case MessageTypeEnum::Stop:
-		logger->Print("Receive Stop message");
-		rlcLedController->Stop();
-		break;
-	case MessageTypeEnum::PlayFrom:
-		logger->Print("Receive PlayFrom message");
-		CheckStartFrameTicker(message.SendTime);
-		rlcLedController->PlayFrom(message.PlayFromTime, message.SendTime);
-		break;
-	case MessageTypeEnum::Rewind:
-		logger->Print("Receive Rewind message");
-		CheckStartFrameTicker(message.SendTime);
-		rlcLedController->Rewind(message.PlayFromTime, message.SendTime, message.ClientState);
+	case MessageTypeEnum::State:
+		logger->Print("Receive State message");
+		ChangeState(message);
 		break;
 	case MessageTypeEnum::RequestClientInfo:
 		SendClientInfo();
@@ -266,6 +252,24 @@ void OnReceiveMessage(RLCMessage& message)
 		break;
 	}
 }
+
+void ChangeState(RLCMessage message)
+{
+	switch (message.ClientState) {
+		case ClientStateEnum::Stoped:
+			rlcLedController->Stop();
+			break;
+		case ClientStateEnum::Playing:
+			rlcLedController->Play(message.Frame, message.FrameStartTime);
+			break;
+		case ClientStateEnum::Paused:
+			rlcLedController->Pause(message.Frame);
+			break;
+		default:
+			break;
+	}
+}
+
 
 ClientStateEnum GetClientState() {
 	switch (rlcLedController->Status)
@@ -286,43 +290,6 @@ void SendClientInfo() {
 	SendMessage(message);
 }
 
-bool frameTickerStarted;
-
-void CheckStartFrameTicker(Time sendTime)
-{
-	
-	if (frameTickerStarted)
-	{
-		return;
-	}
-
-	Time now = TimeNow();
-	int64_t deltaTime = now.TotalMicroseconds - sendTime.TotalMicroseconds;
-	if (deltaTime < 0)
-	{
-		deltaTime = 0;
-	}
-	deltaTime /= 1000;
-
-	uint32_t waitTime = rlcLedController->frameTime - (deltaTime % rlcLedController->frameTime);
-	logger->Print("Time now: ", now.GetSeconds(), false); 
-	logger->Print(" sec, ", now.GetMicroseconds(), false); 
-	logger->Print("us");
-
-	logger->Print("Send time: ", sendTime.GetSeconds(), false); 
-	logger->Print(" sec, ", sendTime.GetMicroseconds(), false);
-	logger->Print("us");
-
-	logger->Print("deltaTime: ", (uint32_t)deltaTime, false); logger->Print(" ms");
-	logger->Print("waitTime: ", waitTime, false); logger->Print("ms");
-
-
-	tickerFrame.detach();
-	delay(waitTime);
-	tickerFrame.attach_ms(rlcLedController->frameTime, NextFrameHandler);
-	frameTickerStarted = true;
-}
-
 void OpenCyclogrammFile()
 {
 	if (!cyclogrammFile) {
@@ -330,11 +297,6 @@ void OpenCyclogrammFile()
 		logger->Print("Cyclogramm opened: ", cyclogrammFile.name());
 		logger->Print("Cyclogramm data available: ", cyclogrammFile.available());
 	}
-}
-
-inline void NextFrameHandler()
-{
-	rlcLedController->NextFrame();
 }
 
 inline void BatteryChargeHandler()
@@ -426,7 +388,7 @@ void FastLEDInitialization()
 	FastLED.setBrightness(rlcSettings.SPILedGlobalBrightness);
 }
 
-
+/*
 void DefaultLight() {
 	if (!rlcLedController->IsInitialized)
 	{
@@ -440,9 +402,9 @@ void DefaultLight() {
 	for(size_t i = 0; i < rlcLedController->PWMChannelCount; i++) {
 		PinWrite(rlcLedController->PWMChannels[i], ANALOG_HIGH);
 	}
-}
+}*/
 
-
+/*
 void ClearLight()
 {
 	if(!rlcLedController->IsInitialized) {
@@ -452,7 +414,7 @@ void ClearLight()
 	for(size_t i = 0; i < rlcLedController->PWMChannelCount; i++) {
 		PinWrite(rlcLedController->PWMChannels[i], ANALOG_LOW);
 	}	
-}
+}*/
 
 void WaitingTimeSynchronization(IPAddress& ipAddress, uint16_t port)
 {
@@ -480,14 +442,13 @@ void CheckWiredStart()
 	// если нажата, то buttonState будет LOW:
 	if(wiredButtonState == LOW && wiredStartIsInitialized && !wiredStarted) {
 		logger->Print("Programm started");
-		tickerFrame.attach_ms(rlcLedController->frameTime, NextFrameHandler);
-		rlcLedController->Play();
+		rlcLedController->Play(0, TimeNow() + (uint32_t)4000);
 		wiredStarted = true;
 		//конец последовательности воспроизведения
 		wiredStartIsInitialized = false;
 	}
 }
-
+/*
 void StartDefaultLightTicker()
 {
 	if(!rlcLedController->IsInitialized) {
@@ -495,7 +456,7 @@ void StartDefaultLightTicker()
 	}
 	rlcLedController->defaultLightOn = true;
 	defaultLightTicker.attach_ms(50, DefaultLight);
-}
+}*/
 
 void WiredSetup()
 {
@@ -513,7 +474,7 @@ void WirelessSetup()
 	WaitingTimeSynchronization(serverIP, NTP_PORT);
 	StartReceiveFromRLCServer();
 
-	tickerBattery.attach_ms(5000, BatteryChargeHandler);
+	//tickerBattery.attach_ms(5000, BatteryChargeHandler);
 }
 
 void setup()

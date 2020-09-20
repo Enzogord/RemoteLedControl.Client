@@ -33,6 +33,7 @@ public:
 	CRGB* LedArray;
 	unsigned int PWMChannelCount;
 	int* PWMChannels;
+	uint8_t* pwmValuesBuffer;
 	LEDControllerStatuses Status;
 	boolean IsInitialized;
 	unsigned int FrameBytes;
@@ -47,14 +48,11 @@ public:
 
 	bool defaultLightOn;
 
-	void Play();
-	void PlayFrom(Time &launchFromTime, Time &lauchTime);
-	void Rewind(Time &launchFromTime, Time &lauchTime, ClientStateEnum &clientState);
+	void Play(uint32_t frame, Time frameStartTime);
 	void Stop();
-	void Pause();
+	void Pause(uint32_t frame);
 	void Show();
-	
-	void NextFrame();
+
 
 private:
 	ILogger& logger;
@@ -62,6 +60,22 @@ private:
 	File cyclogrammFile;
 	boolean showNext = false;
 	boolean cyclogrammEnded = false;
+	
+	boolean isPlayScheduled;
+	uint scheduledFrame;
+	Time scheduledPlayTime;
+	Time nextFramePlayTime;
+	void ScheduledFramePreparation();
+
+	bool CanShowNextFrame();
+
+	void InternalStop();
+
+	void ShowFrame();
+
+	void NextFrame();
+
+	void Clear();
 
 	// Номер кадр с которого будет начато воспроизведение
 	//unsigned long launchFrame;
@@ -90,7 +104,7 @@ private:
 	uint32_t GetFrameFromTime(Time& time);
 
 	//Подготовка данных для следующего кадра
-	void NextFrameDataPreparation();
+	void FrameDataPreparation();
 
 	//Проверяет доступность файла циклограммы. Если не файл не доступен, пытается переоткрыть его.
 	bool CheckFileAvailability();
