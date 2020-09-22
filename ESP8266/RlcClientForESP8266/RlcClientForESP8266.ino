@@ -38,7 +38,7 @@
 
 ILogger* logger;
 
-Ticker tickerBattery;
+Ticker tickerState;
 
 WiFiUDP udp;
 File cyclogrammFile;
@@ -54,7 +54,7 @@ RLCMessageFactory messageFactory;
 boolean connectionInProgress = false;
 RLCLedController* rlcLedController;
 MessageIdRegistry messageIdsRegistry = MessageIdRegistry();
-bool sendBatteryCharge;
+bool needSendState;
 
 #pragma region Проводной запуск
 
@@ -159,6 +159,9 @@ void WaitingServerIPAddress()
 					logger->Print("Response not initialized");
 					break;
 				}
+				if (response.SourceType != SourceTypeEnum::Server) {
+					break;
+				}
 				if (response.MessageType != MessageTypeEnum::SendServerIP) {
 					logger->Print("Message type not SendServerIP");
 					break;
@@ -212,18 +215,18 @@ inline void ReadRLCMessage() {
 	logger->Print("Receive message with type: ", rlcMessageBuffer[9]);
 	if (message.IsInitialized && message.Key == rlcSettings.ProjectKey && message.SourceType == SourceTypeEnum::Server) {
 		if(messageIdsRegistry.Contains(message.MessageId)) {
-			Response(message.MessageId);
+			SendResponse(message.MessageId);
 			return;
 		}
 		OnReceiveMessage(message);
-		Response(message.MessageId);
+		SendResponse(message.MessageId);
 		messageIdsRegistry.AppendId(message.MessageId);
 	}
 }
 
-void Response(int32_t messageId)
+void SendResponse(int32_t messageId)
 {
-	RLCMessage message = messageFactory.SendClientInfo(GetClientState());
+	RLCMessage message = messageFactory.SendState(GetClientState(), GetBatteryChargeLevel());
 	message.MessageId = messageId;
 	SendMessage(message);
 }
@@ -240,16 +243,16 @@ void OnReceiveMessage(RLCMessage& message)
 {
 	switch (message.MessageType)
 	{
-	case MessageTypeEnum::State:
-		logger->Print("Receive State message");
-		ChangeState(message);
-		break;
-	case MessageTypeEnum::RequestClientInfo:
-		SendClientInfo();
-		break;
-	default:
-		logger->Print("Receive message: ", ToString(message.MessageType));
-		break;
+		case MessageTypeEnum::State:
+			logger->Print("Receive State message. Id: ", message.MessageId);
+			ChangeState(message);
+			break;
+		case MessageTypeEnum::RequestClientInfo:
+			SendState();
+			break;
+		default:
+			logger->Print("Receive unknown message: ", ToString(message.MessageType));
+			break;
 	}
 }
 
@@ -285,11 +288,6 @@ ClientStateEnum GetClientState() {
 	}
 }
 
-void SendClientInfo() {
-	RLCMessage message = messageFactory.SendClientInfo(GetClientState());
-	SendMessage(message);
-}
-
 void OpenCyclogrammFile()
 {
 	if (!cyclogrammFile) {
@@ -299,21 +297,32 @@ void OpenCyclogrammFile()
 	}
 }
 
-inline void BatteryChargeHandler()
+
+inline void SendStateHandler()
 {
-	sendBatteryCharge = true;
+	needSendState = true;
 }
 
-void SendBatteryCharge()
+void ExactSendState()
 {
-	if (sendBatteryCharge)
-	{
-		uint16_t chargeValue = (uint16_t)analogRead(A0);
-		RLCMessage batteryChargeMessage = messageFactory.BatteryCharge(GetClientState(), chargeValue);
+	needSendState = true;
+	SendState();
+}
 
-		SendMessage(batteryChargeMessage);
-		sendBatteryCharge = false;
+void SendState()
+{
+	if(!needSendState) {
+		return;
 	}
+	RLCMessage message = messageFactory.SendState(GetClientState(), GetBatteryChargeLevel());
+	SendMessage(message);
+
+	needSendState = false;
+}
+
+inline uint16_t GetBatteryChargeLevel()
+{
+	(uint16_t)analogRead(A0);
 }
 
 void WiFiConnect() {
@@ -388,34 +397,6 @@ void FastLEDInitialization()
 	FastLED.setBrightness(rlcSettings.SPILedGlobalBrightness);
 }
 
-/*
-void DefaultLight() {
-	if (!rlcLedController->IsInitialized)
-	{
-		return;
-	}
-	if(rlcLedController->defaultLightOn == false) {
-		defaultLightTicker.detach();
-	};
-
-	FastLED.showColor(CRGB::White);
-	for(size_t i = 0; i < rlcLedController->PWMChannelCount; i++) {
-		PinWrite(rlcLedController->PWMChannels[i], ANALOG_HIGH);
-	}
-}*/
-
-/*
-void ClearLight()
-{
-	if(!rlcLedController->IsInitialized) {
-		return;
-	}
-	FastLED.clear(true);
-	for(size_t i = 0; i < rlcLedController->PWMChannelCount; i++) {
-		PinWrite(rlcLedController->PWMChannels[i], ANALOG_LOW);
-	}	
-}*/
-
 void WaitingTimeSynchronization(IPAddress& ipAddress, uint16_t port)
 {
 	FastLED.showColor(CRGB::Green);
@@ -448,15 +429,6 @@ void CheckWiredStart()
 		wiredStartIsInitialized = false;
 	}
 }
-/*
-void StartDefaultLightTicker()
-{
-	if(!rlcLedController->IsInitialized) {
-		return;
-	}
-	rlcLedController->defaultLightOn = true;
-	defaultLightTicker.attach_ms(50, DefaultLight);
-}*/
 
 void WiredSetup()
 {
@@ -474,7 +446,9 @@ void WirelessSetup()
 	WaitingTimeSynchronization(serverIP, NTP_PORT);
 	StartReceiveFromRLCServer();
 
-	//tickerBattery.attach_ms(5000, BatteryChargeHandler);
+	tickerState.attach_ms(2000, SendStateHandler);
+
+	ExactSendState();
 }
 
 void setup()
@@ -517,7 +491,6 @@ void setup()
 		logger->Print("Wireless mode enabled");
 		WirelessSetup();
 	}
-	//StartDefaultLightTicker();
 }
 
 void loop(void) {
@@ -525,7 +498,7 @@ void loop(void) {
 		CheckWiredStart();
 	}
 	else {
-		SendBatteryCharge();
+		SendState();
 		ReadMessagesFromServer();
 	}
 	

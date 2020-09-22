@@ -19,8 +19,8 @@ void RLCLedController::Initialize(FastLedInitialization initializerMethod, File&
 
 	FrameBytes = (LedCount * 3) + PWMChannelCount;
 	pwmValuesBuffer = new uint8_t[PWMChannelCount];
-
 	IsInitialized = true;
+	Stop();
 }
 
 #pragma region Control
@@ -35,11 +35,17 @@ void RLCLedController::Play(uint32_t frame, Time frameStartTime)
 	isPlayScheduled = true;
 	scheduledFrame = frame;
 	scheduledPlayTime = frameStartTime;
+	logger.Print("Scheduled play. ", false);
+	logger.Print("frame: ", scheduledFrame, false);
+	logger.Print(" on time: ", scheduledPlayTime.GetSeconds(), false);
+	logger.Print("sec, ", scheduledPlayTime.GetMicroseconds(), false);
+	logger.Print("us");
 }
 
 void RLCLedController::Stop()
 {
 	InternalStop();
+	isPlayScheduled = false;
 }
 
 void RLCLedController::InternalStop()
@@ -48,12 +54,13 @@ void RLCLedController::InternalStop()
 		return;
 	}
 	ResetPosition();
+	FrameDataPreparation();
+
 	Status = LEDControllerStatuses::Stoped;
-	isPlayScheduled = false;
 	logger.Print("LED controller stoped.");
 }
 
-void RLCLedController::ResetPosition()
+inline void RLCLedController::ResetPosition()
 {
 	SetPosition(0);
 }
@@ -66,7 +73,10 @@ void RLCLedController::Pause(uint32_t frame)
 	SetPosition(frame);
 	FrameDataPreparation();
 	Status = LEDControllerStatuses::Paused;
+	isPlayScheduled = false;
+
 	logger.Print("LED controller paused.");
+	logger.Print("frame: ", scheduledFrame);
 }
 
 
@@ -131,6 +141,10 @@ bool RLCLedController::CanShowNextFrame() {
 		Time timeUntilNextFrame = nextFramePlayTime - now;
 		if(timeUntilNextFrame.TotalMicroseconds < 5000) {
 			delayMicroseconds(timeUntilNextFrame.TotalMicroseconds);
+			logger.Print("Play frame: ", framePosition, false);
+			logger.Print(" on time: ", nextFramePlayTime.GetSeconds(), false);
+			logger.Print("sec, ", nextFramePlayTime.GetMicroseconds(), false);
+			logger.Print("us");
 		}
 		else {
 			return false;
@@ -169,12 +183,11 @@ void RLCLedController::NextFrame()
 }
 
 void RLCLedController::FrameDataPreparation() {
+	logger.Print("cyclogrammFile.available(): ", cyclogrammFile.available());
 	if(!CheckFileAvailability() || cyclogrammFile.available() < FrameBytes) {
-		cyclogrammEnded = true;
+		InternalStop();
 		return;
 	}
-
-	cyclogrammEnded = false;
 
 	for (unsigned int i = 0; i < LedCount; i++) {
 		LedArray[i].r = cyclogrammFile.read();
@@ -213,6 +226,11 @@ void RLCLedController::SetPosition(uint64_t framePosition)
 	uint64_t frameBytePosition = GetFrameBytePosition(framePosition);
 	if(frameBytePosition >= (cyclogrammFile.size() - FrameBytes)) {
 		InternalStop();
+
+		logger.Print("IsInitialized: ", IsInitialized);
+		logger.Print("framePosition: ", framePosition);
+		logger.Print("cyclogrammFile.size(): ", cyclogrammFile.size());
+		logger.Print("frameBytePosition: ", frameBytePosition);
 		logger.Print("Position out of range cyclogramm size or set position to last frame. LED controller stoped.");
 	}
 	cyclogrammFile.seek(frameBytePosition);	

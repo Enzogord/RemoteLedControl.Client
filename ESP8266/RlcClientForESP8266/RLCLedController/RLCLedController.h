@@ -81,7 +81,7 @@ private:
 	//unsigned long launchFrame;
 
 	// Текущая позиция кадра (порядковый номер кадра, не индекс байта в файла!)
-	uint32_t framePosition = 0;
+	uint32_t framePosition = 1;
 
 	// Устанавливает позицию в файле на необходимый кадр
 	void SetPosition(uint64_t framePosition);
