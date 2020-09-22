@@ -25,15 +25,15 @@ enum class MessageTypeEnum
 {
 	NotSet = 0,
 
-	//to client
+	//common
 	State = 1,
+
+	//to client
 	SendServerIP = 5,
 	RequestClientInfo = 6,
 
 	//to server
-	ClientInfo = 100,
-	RequestServerIp = 101,
-	BatteryCharge = 102
+	RequestServerIp = 101
 };
 
 inline const char* ToString(MessageTypeEnum clientState)
@@ -44,9 +44,7 @@ inline const char* ToString(MessageTypeEnum clientState)
 	case MessageTypeEnum::State:   return "State";
 	case MessageTypeEnum::SendServerIP:   return "SendServerIP";
 	case MessageTypeEnum::RequestClientInfo:   return "RequestClientInfo";
-	case MessageTypeEnum::ClientInfo:   return "ClientInfo";
 	case MessageTypeEnum::RequestServerIp:   return "RequestServerIp";
-	case MessageTypeEnum::BatteryCharge:   return "BatteryCharge";
 	default:      return "NotSet";
 	}
 }

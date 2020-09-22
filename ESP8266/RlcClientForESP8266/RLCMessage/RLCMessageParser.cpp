@@ -97,14 +97,8 @@ bool RLCMessageParser::TryParseMessageType(MessageTypeEnum & messageType, uint8_
 			return true;
 
 			//to server
-		case(100):
-			messageType = MessageTypeEnum::ClientInfo;
-			return true;
 		case(101):
 			messageType = MessageTypeEnum::RequestServerIp;
-			return true;
-		case(102):
-			messageType = MessageTypeEnum::BatteryCharge;
 			return true;
 		default:
 			messageType = MessageTypeEnum::NotSet;
