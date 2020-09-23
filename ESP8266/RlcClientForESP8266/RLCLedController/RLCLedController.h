@@ -46,12 +46,11 @@ public:
 
 	void Initialize(FastLedInitialization initializerMethod, File &cyclogrammFile, ReopenFile reopenFileMethod);
 
-	bool defaultLightOn;
-
 	void Play(uint32_t frame, Time frameStartTime);
 	void Stop();
 	void Pause(uint32_t frame);
 	void Show();
+	void TestConnection(Time frameStart);
 
 
 private:
@@ -60,6 +59,7 @@ private:
 	File cyclogrammFile;
 	boolean showNext = false;
 	boolean cyclogrammEnded = false;
+	uint8_t testLightFrames = 0;
 	
 	boolean isPlayScheduled;
 	uint scheduledFrame;
@@ -77,6 +77,8 @@ private:
 
 	void Clear();
 
+	void ShowTestFrames();
+
 	// Номер кадр с которого будет начато воспроизведение
 	//unsigned long launchFrame;
 
@@ -88,20 +90,9 @@ private:
 
 	// Сбрасывает позицию в файле на начало
 	void ResetPosition();
-
-	// Устанавливает время циклограммы с которого необходимо начать воспроизведение
-	bool SetLaunchTime(Time &launchFromTime, Time &lauchTime);
 	
 	// Получение индекса байта в файле для текущего кадра
 	inline uint64_t GetFrameBytePosition(uint64_t framePos);
-
-	// Получение текущего времени воспроизведения циклограммы
-	Time GetCurrentPlayTime();
-
-	// Получение длины циклограммы
-	Time GetCyclogrammLength();
-
-	uint32_t GetFrameFromTime(Time& time);
 
 	//Подготовка данных для следующего кадра
 	void FrameDataPreparation();

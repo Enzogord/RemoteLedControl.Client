@@ -31,6 +31,7 @@ enum class MessageTypeEnum
 	//to client
 	SendServerIP = 5,
 	RequestClientInfo = 6,
+	ConnectionTest = 7,
 
 	//to server
 	RequestServerIp = 101
@@ -44,6 +45,7 @@ inline const char* ToString(MessageTypeEnum clientState)
 	case MessageTypeEnum::State:   return "State";
 	case MessageTypeEnum::SendServerIP:   return "SendServerIP";
 	case MessageTypeEnum::RequestClientInfo:   return "RequestClientInfo";
+	case MessageTypeEnum::ConnectionTest:   return "ConnectionTest";
 	case MessageTypeEnum::RequestServerIp:   return "RequestServerIp";
 	default:      return "NotSet";
 	}

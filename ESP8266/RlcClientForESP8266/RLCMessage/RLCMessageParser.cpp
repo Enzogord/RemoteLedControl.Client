@@ -95,6 +95,9 @@ bool RLCMessageParser::TryParseMessageType(MessageTypeEnum & messageType, uint8_
 		case(6):
 			messageType = MessageTypeEnum::RequestClientInfo;
 			return true;
+		case(7):
+			messageType = MessageTypeEnum::ConnectionTest;
+			return true;
 
 			//to server
 		case(101):

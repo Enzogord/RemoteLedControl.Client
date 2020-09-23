@@ -65,6 +65,25 @@ inline void RLCLedController::ResetPosition()
 	SetPosition(0);
 }
 
+void RLCLedController::TestConnection(Time startFrame)
+{
+	if(Status != LEDControllerStatuses::Stoped) {
+		return;
+	}
+	Time now = TimeNow();
+	if(now < startFrame) {
+		testLightFrames = 10;
+	}
+	else {
+		uint32_t timeDiff = (uint32_t)(now.TotalMicroseconds - startFrame.TotalMicroseconds);
+		uint32_t framesLeft = timeDiff / 50000;
+		if(framesLeft >= 10) {
+			return;
+		}
+		testLightFrames = 10 - framesLeft;
+	}
+}
+
 void RLCLedController::Pause(uint32_t frame)
 {
 	if (!IsInitialized) {
@@ -158,13 +177,26 @@ bool RLCLedController::CanShowNextFrame() {
 void RLCLedController::ShowFrame()
 {
 	if(Status == LEDControllerStatuses::Stoped) {
-		Clear();
+		if(testLightFrames) {
+			testLightFrames--;
+			ShowTestFrames();
+		}
+		else {
+			Clear();
+		}
 	}
 	else {
 		FastLED.show();
 		for (unsigned int i = 0; i < PWMChannelCount; i++) {
 			PinWrite(PWMChannels[i], pwmValuesBuffer[i]);
 		}
+	}
+}
+
+void RLCLedController::ShowTestFrames() {
+	FastLED.showColor(CRGB::GhostWhite);
+	for (unsigned int i = 0; i < PWMChannelCount; i++) {
+		PinWrite(PWMChannels[i], HIGH);
 	}
 }
 

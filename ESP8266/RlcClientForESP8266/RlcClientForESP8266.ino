@@ -226,6 +226,9 @@ inline void ReadRLCMessage() {
 
 void SendResponse(int32_t messageId)
 {
+	if(!messageId) {
+		return;
+	}
 	RLCMessage message = messageFactory.SendState(GetClientState(), GetBatteryChargeLevel());
 	message.MessageId = messageId;
 	SendMessage(message);
@@ -249,6 +252,9 @@ void OnReceiveMessage(RLCMessage& message)
 			break;
 		case MessageTypeEnum::RequestClientInfo:
 			SendState();
+			break;
+		case MessageTypeEnum::ConnectionTest:
+			rlcLedController->TestConnection(message.FrameStartTime);
 			break;
 		default:
 			logger->Print("Receive unknown message: ", ToString(message.MessageType));
