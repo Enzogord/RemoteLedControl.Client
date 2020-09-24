@@ -46,6 +46,8 @@ public:
 
 	void Initialize(FastLedInitialization initializerMethod, File &cyclogrammFile, ReopenFile reopenFileMethod);
 
+	void Start();
+
 	void Play(uint32_t frame, Time frameStartTime);
 	void Stop();
 	void Pause(uint32_t frame);

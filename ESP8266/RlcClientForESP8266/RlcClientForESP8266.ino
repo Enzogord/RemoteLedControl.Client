@@ -412,6 +412,15 @@ void WaitingTimeSynchronization(IPAddress& ipAddress, uint16_t port)
 	timeSync.SynchronizeMultiple(10, 20000);
 }
 
+void WiredShow()
+{
+	FastLED.showColor(CRGB::White);
+
+	for (unsigned int i = 0; i < rlcLedController->PWMChannelCount; i++) {
+		PinWrite(rlcLedController->PWMChannels[i], HIGH);
+	}
+}
+
 void CheckWiredStart()
 {
 	if(wiredStarted) {
@@ -429,6 +438,7 @@ void CheckWiredStart()
 	// если нажата, то buttonState будет LOW:
 	if(wiredButtonState == LOW && wiredStartIsInitialized && !wiredStarted) {
 		logger->Print("Programm started");
+		rlcLedController->Stop();
 		rlcLedController->Play(0, TimeNow() + (uint32_t)4000);
 		wiredStarted = true;
 		//конец последовательности воспроизведения
@@ -492,21 +502,25 @@ void setup()
 	logger->Print("--------------------");
 	if(wiredMode) {
 		logger->Print("Wired mode enabled");
+		WiredShow();
 	}
 	else {
 		logger->Print("Wireless mode enabled");
 		WirelessSetup();
 	}
+	rlcLedController->Start();
 }
 
 void loop(void) {
 	if(wiredMode) {
 		CheckWiredStart();
+		if(wiredStarted) {
+			rlcLedController->Show();
+		}
 	}
 	else {
 		SendState();
 		ReadMessagesFromServer();
+		rlcLedController->Show();
 	}
-	
-	rlcLedController->Show();
 }

@@ -20,6 +20,12 @@ void RLCLedController::Initialize(FastLedInitialization initializerMethod, File&
 	FrameBytes = (LedCount * 3) + PWMChannelCount;
 	pwmValuesBuffer = new uint8_t[PWMChannelCount];
 	IsInitialized = true;
+}
+
+
+void RLCLedController::Start()
+{
+	nextFramePlayTime = TimeNow();
 	Stop();
 }
 
