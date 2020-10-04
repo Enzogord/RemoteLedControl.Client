@@ -13,13 +13,13 @@ class TimeSynchronization
 {
 private:
 	ILogger& logger;
-	ISntpClient& sntpClient;
-	void RunSntpRequest(SntpPackage& sntpPackage);
-	int64_t GetTimeShift(SntpPackage& sntpPackage);
-	int64_t RunRequestAndGetTimeShift();
+	ISntpClient* sntpClient;
+	bool RunSntpRequest(SntpPackage* sntpPackage);
+	int64_t GetTimeShift(SntpPackage* sntpPackage);
+	bool TryRunRequestAndGetTimeShift(int64_t* timeShift);
 
 public:
-	TimeSynchronization(ISntpClient& sntpClient, ILogger& logger);
+	TimeSynchronization(ISntpClient* sntpClient, ILogger& logger);
 	~TimeSynchronization();
 
 	void SynchronizeSingle();

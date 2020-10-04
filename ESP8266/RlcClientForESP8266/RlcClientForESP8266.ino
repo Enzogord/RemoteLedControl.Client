@@ -408,8 +408,9 @@ void WaitingTimeSynchronization(IPAddress& ipAddress, uint16_t port)
 	FastLED.showColor(CRGB::Green);
 
 	ISntpClient* sntpClient = new SntpClient(ipAddress, port);
-	TimeSynchronization timeSync = TimeSynchronization(*sntpClient, *logger);
-	timeSync.SynchronizeMultiple(10, 20000);
+	TimeSynchronization timeSync = TimeSynchronization(sntpClient, *logger);
+	timeSync.SynchronizeMultiple(30);
+	delete(sntpClient);
 }
 
 void WiredShow()

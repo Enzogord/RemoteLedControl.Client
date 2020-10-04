@@ -7,33 +7,32 @@ SntpClient::SntpClient(IPAddress& ipAddressRef, uint16_t port)
 	SntpClient::port = port;
 }
 
-bool SntpClient::SendSntpRequest(SntpPackage& sntpPackage, int responseDelayMs)
+bool SntpClient::SendSntpRequest(SntpPackage* sntpPackage, int responseDelayMs)
 {
-	WiFiUDP udpClient;
-	udpClient.begin(port);
-	udpClient.flush();
-	udpClient.setTimeout(responseDelayMs);
-	udpClient.beginPacket(ipAddress, port);
-	sntpPackage.SetSendingTime(TimeNow());
-	udpClient.write(sntpPackage.GetBytes(), SNTP_PACKET_SIZE);
-	udpClient.endPacket();
-	
+	udp.begin(port);
+	udp.setTimeout(responseDelayMs);
+
+	udp.beginPacket(ipAddress, port);
+	sntpPackage->SetSendingTime(TimeNow());
+	udp.write(sntpPackage->GetBytes(), SNTP_PACKET_SIZE);
+	udp.endPacket();
+
 
 	uint32_t beginWait = millis();
-	while(millis() - beginWait < responseDelayMs) {
-		int size = udpClient.parsePacket();
-		if(size >= SNTP_PACKET_SIZE) {
+	bool result = false;
+	while (millis() - beginWait < responseDelayMs) {
+		int size = udp.parsePacket();
+		if (size >= SNTP_PACKET_SIZE) {
 			Time receiveTime = TimeNow();
-			uint8_t* packetBuffer = new uint8_t[SNTP_PACKET_SIZE];
-			udpClient.read(packetBuffer, SNTP_PACKET_SIZE);
-			
-			sntpPackage.SetServerReceiveTime(packetBuffer);
-			sntpPackage.SetServerSendingTime(packetBuffer);
-			sntpPackage.SetReceiveTime(receiveTime);
-			udpClient.stop();
-			return true;
+			memset(packetBuffer, 0, SNTP_PACKET_SIZE);
+			udp.readBytes(packetBuffer, SNTP_PACKET_SIZE);
+			sntpPackage->SetServerReceiveTime(packetBuffer);
+			sntpPackage->SetServerSendingTime(packetBuffer);
+			sntpPackage->SetReceiveTime(receiveTime);
+			result = true;
+			break;
 		}
 	}
-	udpClient.stop();
-	return false;
+	udp.stop();
+	return result;
 }

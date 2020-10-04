@@ -5,5 +5,5 @@
 class ISntpClient
 {
 public:
-	virtual bool SendSntpRequest(SntpPackage& sntpPackage, int responseDelayMs = 1000) = 0;
+	virtual bool SendSntpRequest(SntpPackage* sntpPackage, int responseDelayMs = 1000) = 0;
 };
