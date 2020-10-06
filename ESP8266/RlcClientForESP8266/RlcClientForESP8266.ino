@@ -366,6 +366,9 @@ void FastLEDInitialization()
 	{
 		if (rlcSettings.Pins[i].Type == PinType::SPI)
 		{
+			if(rlcSettings.Pins[i].LedCount == 0) {
+				continue;
+			}
 			switch (rlcSettings.Pins[i].Number)
 			{
 			case 0:
