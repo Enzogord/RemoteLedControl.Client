@@ -1,0 +1,1 @@
+Define common types and classes for RLC library

@@ -1,0 +1,42 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Text Include="$(MSBuildThisFileDirectory)readme.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(MSBuildThisFileDirectory)Time.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)SNTP\SntpPackage.cpp">
+      <Filter>SNTP</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)SNTP\TimeSynchronization.cpp">
+      <Filter>SNTP</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)SNTP\SntpFunctions.cpp">
+      <Filter>SNTP</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)TimeNow.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Time.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)TimeFunctions.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)TimeParameters.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)SNTP\ISntpClient.h">
+      <Filter>SNTP</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)SNTP\SntpPackage.h">
+      <Filter>SNTP</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)TimeNow.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)SNTP\TimeSynchronization.h">
+      <Filter>SNTP</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)SNTP\SntpFunctions.h">
+      <Filter>SNTP</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="SNTP">
+      <UniqueIdentifier>{2cb67492-11d1-41a1-b4d1-4d0ce3de9a99}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
