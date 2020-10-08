@@ -9,9 +9,9 @@ public:
 	RLCMessageFactory();
 	RLCMessageFactory(uint32_t key, uint16_t clientNumber);
 	~RLCMessageFactory();
-	RLCMessage SendClientInfo(ClientStateEnum clientState);
+	RLCMessage SendState(ClientStateEnum clientState);
+	RLCMessage SendState(ClientStateEnum clientState, uint16_t batteryCharge);
 	RLCMessage RequestServerIP(ClientStateEnum clientState);
-	RLCMessage BatteryCharge(ClientStateEnum clientState, uint16_t batteryCharge);
 private:
 	uint32_t key;
 	uint16_t clientNumber;

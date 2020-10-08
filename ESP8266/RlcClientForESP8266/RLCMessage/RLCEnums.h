@@ -25,19 +25,16 @@ enum class MessageTypeEnum
 {
 	NotSet = 0,
 
+	//common
+	State = 1,
+
 	//to client
-	Play = 1,
-	Stop = 2,
-	Pause = 3,
-	PlayFrom = 4,
 	SendServerIP = 5,
 	RequestClientInfo = 6,
-	Rewind = 7,
+	ConnectionTest = 7,
 
 	//to server
-	ClientInfo = 100,
-	RequestServerIp = 101,
-	BatteryCharge = 102
+	RequestServerIp = 101
 };
 
 inline const char* ToString(MessageTypeEnum clientState)
@@ -45,16 +42,11 @@ inline const char* ToString(MessageTypeEnum clientState)
 	switch(clientState)
 	{
 	case MessageTypeEnum::NotSet:   return "NotSet";
-	case MessageTypeEnum::Play:   return "Play";
-	case MessageTypeEnum::Stop:   return "Stop";
-	case MessageTypeEnum::Pause:   return "Pause";
-	case MessageTypeEnum::PlayFrom:   return "PlayFrom";
+	case MessageTypeEnum::State:   return "State";
 	case MessageTypeEnum::SendServerIP:   return "SendServerIP";
 	case MessageTypeEnum::RequestClientInfo:   return "RequestClientInfo";
-	case MessageTypeEnum::Rewind:   return "Rewind";
-	case MessageTypeEnum::ClientInfo:   return "ClientInfo";
+	case MessageTypeEnum::ConnectionTest:   return "ConnectionTest";
 	case MessageTypeEnum::RequestServerIp:   return "RequestServerIp";
-	case MessageTypeEnum::BatteryCharge:   return "BatteryCharge";
 	default:      return "NotSet";
 	}
 }

@@ -16,6 +16,7 @@
 #include "RLCMessage/RLCMessageParser.h"
 #include "RLCMessage/RLCEnums.h"
 #include "RLCMessage/RLCMessageFactory.h"
+#include "RLCMessage/MessageIdRegistry.h"
 #include "RLCLedController/RLCLedController.h"
 #include "Service/PinController.h"
 #include "RLCLibraryImplementations/Logger/SerialLogger.h"
@@ -30,8 +31,6 @@
 //таймаут ожидания при запросе по мультикасту
 #define SERVER_IP_TIMEOUT 2000UL
 #define NTP_PORT 11011
-//таймаут ожидания успешного соединения в рабочем цикле, мс
-#define TCP_CONNECTION_TIMEOUT_ON_WORK 10UL
 
 //значения HIGH и LOW специально инвертированы из-за оборудования
 #define ANALOG_HIGH 255
@@ -39,27 +38,23 @@
 
 ILogger* logger;
 
-Ticker tickerFrame;
-Ticker tickerBattery;
-Ticker tickerClock;
-Ticker defaultLightTicker;
+Ticker tickerState;
 
+WiFiUDP udp;
 File cyclogrammFile;
 File settingFile;
 IPAddress broadcastAddress;
 IPAddress serverIP = IPAddress(0, 0, 0, 0);
 String cyclogrammFileName = "Data.cyc";
 uint8* rlcMessageBuffer = new uint8[RLC_MESSAGE_LENGTH];
-WiFiClient tcpClient;
-WiFiUDP udp;
 unsigned long lastTryingConnectionTime;
-ClientStateEnum clientState;
 RLCSetting rlcSettings;
 RLCMessageParser messageParser;
 RLCMessageFactory messageFactory;
 boolean connectionInProgress = false;
 RLCLedController* rlcLedController;
-bool sendBatteryCharge;
+MessageIdRegistry messageIdsRegistry = MessageIdRegistry();
+bool needSendState;
 
 #pragma region Проводной запуск
 
@@ -110,7 +105,6 @@ void Initializations()
 	rlcLedController = new RLCLedController(*logger);
 
 	pinMode(A0, INPUT);
-	clientState = ClientStateEnum::Stoped;
 
 	// Отключение точки доступа
 	WiFi.softAPdisconnect(true);
@@ -142,24 +136,30 @@ void WaitingServerIPAddress()
 {
 	FastLED.showColor(CRGB::Magenta);
 	logger->Print("Waiting Server IP address");
-	RLCMessage requestServerIPMessage = messageFactory.RequestServerIP(clientState);
+	RLCMessage requestServerIPMessage = messageFactory.RequestServerIP(GetClientState());
 	uint8_t* requestBytes = requestServerIPMessage.GetBytes();
+	WiFiUDP udpClient;
+	udpClient.begin(rlcSettings.UDPPort);
+
 	do {
 		logger->Print("Request Server IP address. ");
-		udp.begin(rlcSettings.UDPPort);
-		udp.beginPacket(broadcastAddress, rlcSettings.UDPPort);
-		udp.write(requestBytes, RLC_MESSAGE_LENGTH);
-		udp.endPacket();
+		udpClient.beginPacket(broadcastAddress, rlcSettings.UDPPort);
+		udpClient.write(requestBytes, RLC_MESSAGE_LENGTH);
+		udpClient.endPacket();
 		unsigned long timeCheckpoint = millis();
 		while (serverIP == IPAddress(0, 0, 0, 0) && (millis() - timeCheckpoint) < SERVER_IP_TIMEOUT)
 		{
-			if (udp.available()) {
+			int packetLength = udpClient.parsePacket();
+			if(packetLength == RLC_MESSAGE_LENGTH) {
 				memset(rlcMessageBuffer, 0, RLC_MESSAGE_LENGTH);
-				udp.readBytes(rlcMessageBuffer, RLC_MESSAGE_LENGTH);
+				udpClient.readBytes(rlcMessageBuffer, RLC_MESSAGE_LENGTH);
 				logger->Print("Received server IP packet: ", rlcMessageBuffer[5]);
 				RLCMessage response = messageParser.Parse(rlcMessageBuffer);
 				if (!response.IsInitialized) {
 					logger->Print("Response not initialized");
+					break;
+				}
+				if (response.SourceType != SourceTypeEnum::Server) {
 					break;
 				}
 				if (response.MessageType != MessageTypeEnum::SendServerIP) {
@@ -173,162 +173,125 @@ void WaitingServerIPAddress()
 				serverIP = response.IP;
 			}
 		}
-		udp.stopAll();
+		
 		if (serverIP == IPAddress(0, 0, 0, 0))
 		{
 			logger->Print("Failed to receive server IP address, retry.");
 		}
 	} while (serverIP == IPAddress(0, 0, 0, 0));
+	udpClient.stop();
 	logger->Print("Received server IP: ", serverIP);
 }
 
-//ожидание успешного TCP соединения
-void WaitingConnectToRLCServer(IPAddress& ipAddress, uint16_t port)
-{
-	logger->Print("Waiting connect to ", ipAddress, false); logger->Print(":", port);
-	FastLED.showColor(CRGB::Blue);
-	unsigned long connectionTimePoint = millis();
+inline void StartReceiveFromRLCServer() {
+	udp.begin(rlcSettings.UDPPort);
+}
 
-	int tcpConnected = 0;
-	while (!tcpConnected)
-	{
-		if ((millis() - connectionTimePoint) >= 1000)
+void ReadMessagesFromServer() {
+	while(true) {
+		int packetLength = udp.parsePacket();
+		if(!packetLength) {
+			return;
+		}
+		if(packetLength == RLC_MESSAGE_LENGTH) 
 		{
-			tcpConnected = TryConnectToRLCServer(ipAddress, port, 1000UL);
+			ReadRLCMessage();
+		}
+		else
+		{
+			//else ignoring incorrect packet
+			logger->Print("Ignoring packet with length: ", packetLength);
+			uint8* packetBuffer = new uint8[packetLength];
+			udp.readBytes(packetBuffer, packetLength);
+			delete(packetBuffer);
 		}
 	}
 }
 
-//попытка однократного TCP соединения 
-int TryConnectToRLCServer(IPAddress& ipAddress, uint16_t port, unsigned long timeout)
-{
-	int tcpConnected = 0;
-	//пересоздаем клиент, потому что при разрыве связи не может заново подключиться
-	tcpClient = WiFiClient();
-	logger->Print("Connecting to TCP server");
-	tcpClient.setTimeout(timeout);
-
-	tcpConnected = tcpClient.connect(ipAddress, port);
-
-	if (tcpConnected)
-	{
-		lastTryingConnectionTime = millis();
-		tcpClient.setTimeout(0);
-		tcpClient.keepAlive(2, 1);
-		logger->Print("TCP connected.");
-	}
-	return tcpConnected;
-}
-
-void ReadTCPConnection()
-{
-	if (tcpClient.connected()) {
-		connectionInProgress = false;
-	}
-
-	if (!tcpClient.connected() && !connectionInProgress)
-	{
-		logger->Print("Disconnected. Try reconnect");
-		TryConnectToRLCServer(serverIP, rlcSettings.UDPPort, TCP_CONNECTION_TIMEOUT_ON_WORK);
-		lastTryingConnectionTime = millis();
-		//не задерживаем главный цикл после попытки подключения, сразу возвращая управление
-		return;
-	}
-
-	uint8_t packetBuffer[1024];
-
-	while (tcpClient.available()) {
-		logger->Print("[TCP] Received data form server: ");
-		tcpClient.readBytes(packetBuffer, 1024);
-		RLCMessage message = messageParser.Parse(packetBuffer);
-		logger->Print("message.IsInitialized: ", message.IsInitialized, true);
-		logger->Print("message.Key: ", message.Key);
-		logger->Print("message.SourceType: ", ToString(message.SourceType));
-		if (message.IsInitialized && message.Key == rlcSettings.ProjectKey && message.SourceType == SourceTypeEnum::Server)
-		{
-			OnReceiveMessage(message);
+inline void ReadRLCMessage() {
+	memset(rlcMessageBuffer, 0, RLC_MESSAGE_LENGTH);
+	udp.readBytes(rlcMessageBuffer, RLC_MESSAGE_LENGTH);
+	RLCMessage message = messageParser.Parse(rlcMessageBuffer);
+	logger->Print("Receive message with type: ", rlcMessageBuffer[9]);
+	if (message.IsInitialized && message.Key == rlcSettings.ProjectKey && message.SourceType == SourceTypeEnum::Server) {
+		if(messageIdsRegistry.Contains(message.MessageId)) {
+			SendResponse(message.MessageId);
+			return;
 		}
+		OnReceiveMessage(message);
+		SendResponse(message.MessageId);
+		messageIdsRegistry.AppendId(message.MessageId);
 	}
 }
 
-void OnReceiveMessage(RLCMessage& message)
+void SendResponse(int32_t messageId)
 {
-	RLCMessage responseMessage;
-	switch (message.MessageType)
-	{
-	case MessageTypeEnum::Play:
-		logger->Print("Receive Play message");
-		rlcLedController->Play();
-		break;
-	case MessageTypeEnum::Pause:
-		logger->Print("Receive Pause message");
-		rlcLedController->Pause();
-		break;
-	case MessageTypeEnum::Stop:
-		logger->Print("Receive Stop message");
-		rlcLedController->Stop();
-		break;
-	case MessageTypeEnum::PlayFrom:
-		logger->Print("Receive PlayFrom message");
-		CheckStartFrameTicker(message.SendTime);
-		rlcLedController->PlayFrom(message.PlayFromTime, message.SendTime);
-		break;
-	case MessageTypeEnum::Rewind:
-		logger->Print("Receive Rewind message");
-		CheckStartFrameTicker(message.SendTime);
-		rlcLedController->Rewind(message.PlayFromTime, message.SendTime, message.ClientState);
-		break;
-	case MessageTypeEnum::RequestClientInfo:
-		responseMessage = messageFactory.SendClientInfo(clientState);
-		SendMessage(responseMessage);
-		break;
-	default:
-		logger->Print("Receive message: ", ToString(message.MessageType));
-		break;
-	}
-}
-
-bool frameTickerStarted;
-
-void CheckStartFrameTicker(Time sendTime)
-{
-	
-	if (frameTickerStarted)
-	{
+	if(!messageId) {
 		return;
 	}
-
-	Time now = TimeNow();
-	int64_t deltaTime = now.TotalMicroseconds - sendTime.TotalMicroseconds;
-	if (deltaTime < 0)
-	{
-		deltaTime = 0;
-	}
-	deltaTime /= 1000;
-
-	uint32_t waitTime = rlcLedController->frameTime - (deltaTime % rlcLedController->frameTime);
-	logger->Print("Time now: ", now.GetSeconds(), false); 
-	logger->Print(" sec, ", now.GetMicroseconds(), false); 
-	logger->Print("us");
-
-	logger->Print("Send time: ", sendTime.GetSeconds(), false); 
-	logger->Print(" sec, ", sendTime.GetMicroseconds(), false);
-	logger->Print("us");
-
-	logger->Print("deltaTime: ", (uint32_t)deltaTime, false); logger->Print(" ms");
-	logger->Print("waitTime: ", waitTime, false); logger->Print("ms");
-
-
-	tickerFrame.detach();
-	delay(waitTime);
-	tickerFrame.attach_ms(rlcLedController->frameTime, NextFrameHandler);
-	frameTickerStarted = true;
+	RLCMessage message = messageFactory.SendState(GetClientState(), GetBatteryChargeLevel());
+	message.MessageId = messageId;
+	SendMessage(message);
 }
 
 void SendMessage(RLCMessage& message) {
 	uint8_t* buffer = message.GetBytes();
-	tcpClient.write(buffer, RLC_MESSAGE_LENGTH);
+	udp.beginPacket(serverIP, rlcSettings.UDPPort);
+	udp.write(buffer, RLC_MESSAGE_LENGTH);
+	udp.endPacket();
 	delete(buffer);
+}
+
+void OnReceiveMessage(RLCMessage& message)
+{
+	switch (message.MessageType)
+	{
+		case MessageTypeEnum::State:
+			logger->Print("Receive State message. Id: ", message.MessageId);
+			ChangeState(message);
+			break;
+		case MessageTypeEnum::RequestClientInfo:
+			SendState();
+			break;
+		case MessageTypeEnum::ConnectionTest:
+			rlcLedController->TestConnection(message.FrameStartTime);
+			break;
+		default:
+			logger->Print("Receive unknown message: ", ToString(message.MessageType));
+			break;
+	}
+}
+
+void ChangeState(RLCMessage message)
+{
+	switch (message.ClientState) {
+		case ClientStateEnum::Stoped:
+			rlcLedController->Stop();
+			break;
+		case ClientStateEnum::Playing:
+			rlcLedController->Play(message.Frame, message.FrameStartTime);
+			break;
+		case ClientStateEnum::Paused:
+			rlcLedController->Pause(message.Frame);
+			break;
+		default:
+			break;
+	}
+}
+
+
+ClientStateEnum GetClientState() {
+	switch (rlcLedController->Status)
+	{
+	case LEDControllerStatuses::Stoped:   
+		return ClientStateEnum::Stoped;
+	case LEDControllerStatuses::Played:   
+		return ClientStateEnum::Playing;
+	case LEDControllerStatuses::Paused:  
+		return ClientStateEnum::Paused;
+	default:
+		return ClientStateEnum::NotSet;
+	}
 }
 
 void OpenCyclogrammFile()
@@ -340,32 +303,32 @@ void OpenCyclogrammFile()
 	}
 }
 
-Time lastFrameTime;
-void NextFrameHandler()
+
+inline void SendStateHandler()
 {
-	rlcLedController->NextFrame();
-	lastFrameTime = TimeNow();
+	needSendState = true;
 }
 
-void BatteryChargeHandler()
+void ExactSendState()
 {
-	if (tcpClient.connected())
-	{
-		sendBatteryCharge = true;
-	}
-
+	needSendState = true;
+	SendState();
 }
 
-void SendBatteryCharge()
+void SendState()
 {
-	if (sendBatteryCharge && tcpClient.connected())
-	{
-		uint16_t chargeValue = (uint16_t)analogRead(A0);
-		RLCMessage batteryChargeMessage = messageFactory.BatteryCharge(clientState, chargeValue);
-
-		SendMessage(batteryChargeMessage);
-		sendBatteryCharge = false;
+	if(!needSendState) {
+		return;
 	}
+	RLCMessage message = messageFactory.SendState(GetClientState(), GetBatteryChargeLevel());
+	SendMessage(message);
+
+	needSendState = false;
+}
+
+inline uint16_t GetBatteryChargeLevel()
+{
+	(uint16_t)analogRead(A0);
 }
 
 void WiFiConnect() {
@@ -403,6 +366,9 @@ void FastLEDInitialization()
 	{
 		if (rlcSettings.Pins[i].Type == PinType::SPI)
 		{
+			if(rlcSettings.Pins[i].LedCount == 0) {
+				continue;
+			}
 			switch (rlcSettings.Pins[i].Number)
 			{
 			case 0:
@@ -437,67 +403,25 @@ void FastLEDInitialization()
 			pwmChannelIndex++;
 		}
 	}
-	FastLED.setBrightness(rlcSettings.SPILedGlobalBrightness);
-}
-
-void DefaultLight() {
-	if (!rlcLedController->IsInitialized)
-	{
-		return;
-	}
-	if(rlcLedController->defaultLightOn == false) {
-		defaultLightTicker.detach();
-	};
-
-	FastLED.showColor(CRGB::White);
-	for(size_t i = 0; i < rlcLedController->PWMChannelCount; i++) {
-		PinWrite(rlcLedController->PWMChannels[i], ANALOG_HIGH);
-	}
-}
-
-void ClearLight()
-{
-	if(!rlcLedController->IsInitialized) {
-		return;
-	}
-	FastLED.clear(true);
-	for(size_t i = 0; i < rlcLedController->PWMChannelCount; i++) {
-		PinWrite(rlcLedController->PWMChannels[i], ANALOG_LOW);
-	}	
 }
 
 void WaitingTimeSynchronization(IPAddress& ipAddress, uint16_t port)
 {
 	FastLED.showColor(CRGB::Green);
-	udp.begin(port);
 
-	ISntpClient* sntpClient = new SntpClient(udp, serverIP, NTP_PORT);
-	TimeSynchronization timeSync = TimeSynchronization(*sntpClient, *logger);
-	timeSync.SynchronizeMultiple(10, 20000);
-
-	udp.stopAll();
-	if(DEBUG) {
-		uint32_t clockStartDelay = 1000 - TimeNow().GetMilliseconds();
-		delay(clockStartDelay);
-		tickerClock.attach_ms(1000, RequestPrintTime);
-	}	
+	ISntpClient* sntpClient = new SntpClient(ipAddress, port);
+	TimeSynchronization timeSync = TimeSynchronization(sntpClient, *logger);
+	timeSync.SynchronizeMultiple(30);
+	delete(sntpClient);
 }
 
-bool needPrintTime = false;
-void PrintTime()
+void WiredShow()
 {
-	if(needPrintTime) {
-		Time now = TimeNow();
-		logger->Print("Now: ", now.GetSeconds(), false);
-		logger->Print("sec, ", now.GetMicroseconds(), false);
-		logger->Print("us");
-		needPrintTime = false;
+	FastLED.showColor(CRGB::White);
+
+	for (unsigned int i = 0; i < rlcLedController->PWMChannelCount; i++) {
+		PinWrite(rlcLedController->PWMChannels[i], HIGH);
 	}
-}
-
-void RequestPrintTime()
-{
-	needPrintTime = true;
 }
 
 void CheckWiredStart()
@@ -517,21 +441,12 @@ void CheckWiredStart()
 	// если нажата, то buttonState будет LOW:
 	if(wiredButtonState == LOW && wiredStartIsInitialized && !wiredStarted) {
 		logger->Print("Programm started");
-		tickerFrame.attach_ms(rlcLedController->frameTime, NextFrameHandler);
-		rlcLedController->Play();
+		rlcLedController->Stop();
+		rlcLedController->Play(0, TimeNow() + (uint32_t)4000);
 		wiredStarted = true;
 		//конец последовательности воспроизведения
 		wiredStartIsInitialized = false;
 	}
-}
-
-void StartDefaultLightTicker()
-{
-	if(!rlcLedController->IsInitialized) {
-		return;
-	}
-	rlcLedController->defaultLightOn = true;
-	defaultLightTicker.attach_ms(50, DefaultLight);
 }
 
 void WiredSetup()
@@ -548,9 +463,11 @@ void WirelessSetup()
 	WiFiConnect();
 	WaitingServerIPAddress();
 	WaitingTimeSynchronization(serverIP, NTP_PORT);
-	WaitingConnectToRLCServer(serverIP, rlcSettings.UDPPort);
+	StartReceiveFromRLCServer();
 
-	tickerBattery.attach_ms(1000, BatteryChargeHandler);
+	tickerState.attach_ms(2000, SendStateHandler);
+
+	ExactSendState();
 }
 
 void setup()
@@ -579,6 +496,7 @@ void setup()
 
 	OpenCyclogrammFile();
 	rlcLedController->Initialize(FastLEDInitialization, cyclogrammFile, OpenCyclogrammFile);
+	FastLED.setBrightness(25);
 
 	IsDigitalOutput = rlcSettings.IsDigitalPWMSignal;
 	InvertedOutput = rlcSettings.InvertedPWMSignal;
@@ -588,23 +506,26 @@ void setup()
 	logger->Print("--------------------");
 	if(wiredMode) {
 		logger->Print("Wired mode enabled");
+		WiredShow();
 	}
 	else {
 		logger->Print("Wireless mode enabled");
 		WirelessSetup();
 	}
-	StartDefaultLightTicker();
+	FastLED.setBrightness(rlcSettings.SPILedGlobalBrightness);
+	rlcLedController->Start();
 }
 
 void loop(void) {
 	if(wiredMode) {
 		CheckWiredStart();
+		if(wiredStarted) {
+			rlcLedController->Show();
+		}
 	}
 	else {
-		PrintTime();
-		SendBatteryCharge();
-		ReadTCPConnection();
+		SendState();
+		ReadMessagesFromServer();
+		rlcLedController->Show();
 	}
-	
-	rlcLedController->Show();
 }

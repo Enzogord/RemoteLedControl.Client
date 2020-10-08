@@ -55,6 +55,9 @@
     <ClInclude Include="RLCLibraryImplementations\Time\SntpClient.h">
       <Filter>RLCLibraryImplementations\Time</Filter>
     </ClInclude>
+    <ClInclude Include="RLCMessage\MessageIdRegistry.h">
+      <Filter>RLCMessage</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RLCSetting\RLCSetting.cpp">
@@ -80,6 +83,9 @@
     </ClCompile>
     <ClCompile Include="RLCLibraryImplementations\Time\SntpClient.cpp">
       <Filter>RLCLibraryImplementations\Time</Filter>
+    </ClCompile>
+    <ClCompile Include="RLCMessage\MessageIdRegistry.cpp">
+      <Filter>RLCMessage</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

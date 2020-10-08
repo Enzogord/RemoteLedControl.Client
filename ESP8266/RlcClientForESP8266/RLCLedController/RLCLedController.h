@@ -10,9 +10,8 @@ typedef void (*FastLedInitialization)();
 typedef void (*ReopenFile)();
 
 enum class LEDControllerStatuses {
-	WaitingForPlay,
-	Played,
 	Stoped,
+	Played,
 	Paused
 };
 
@@ -20,9 +19,8 @@ inline const char* ToString(LEDControllerStatuses ledControlledStatus)
 {
 	switch(ledControlledStatus)
 	{
-	case LEDControllerStatuses::WaitingForPlay:   return "WaitingForPlay";
-	case LEDControllerStatuses::Played:   return "Played";
 	case LEDControllerStatuses::Stoped:   return "Stoped";
+	case LEDControllerStatuses::Played:   return "Played";
 	case LEDControllerStatuses::Paused:   return "Paused";
 	default:      return "None";
 	}
@@ -35,6 +33,7 @@ public:
 	CRGB* LedArray;
 	unsigned int PWMChannelCount;
 	int* PWMChannels;
+	uint8_t* pwmValuesBuffer;
 	LEDControllerStatuses Status;
 	boolean IsInitialized;
 	unsigned int FrameBytes;
@@ -47,46 +46,60 @@ public:
 
 	void Initialize(FastLedInitialization initializerMethod, File &cyclogrammFile, ReopenFile reopenFileMethod);
 
-	bool defaultLightOn;
+	void Start();
 
-	void Play();
-	void PlayFrom(Time &launchFromTime, Time &lauchTime);
-	void Rewind(Time &launchFromTime, Time &lauchTime, ClientStateEnum &clientState);
+	void Play(uint32_t frame, Time frameStartTime);
 	void Stop();
-	void Pause();
+	void Pause(uint32_t frame);
 	void Show();
-	void NextFrame();
+	void TestConnection(Time frameStart);
+
 
 private:
 	ILogger& logger;
 	ReopenFile reopenFileMethod;
 	File cyclogrammFile;
 	boolean showNext = false;
+	boolean cyclogrammEnded = false;
+	uint8_t testLightFrames = 0;
+	
+	boolean isPlayScheduled;
+	uint scheduledFrame;
+	Time scheduledPlayTime;
+	Time nextFramePlayTime;
+	void ScheduledFramePreparation();
+
+	bool CanShowNextFrame();
+
+	void InternalStop();
+
+	void ShowFrame();
+
+	void NextFrame();
+
+	void Clear();
+
+	void ShowTestFrames();
 
 	// Номер кадр с которого будет начато воспроизведение
 	//unsigned long launchFrame;
 
 	// Текущая позиция кадра (порядковый номер кадра, не индекс байта в файла!)
-	uint32_t framePosition = 0;
+	uint32_t framePosition = 1;
 
 	// Устанавливает позицию в файле на необходимый кадр
 	void SetPosition(uint64_t framePosition);
 
 	// Сбрасывает позицию в файле на начало
 	void ResetPosition();
-
-	// Устанавливает время циклограммы с которого необходимо начать воспроизведение
-	bool SetLaunchTime(Time &launchFromTime, Time &lauchTime);
 	
 	// Получение индекса байта в файле для текущего кадра
 	inline uint64_t GetFrameBytePosition(uint64_t framePos);
 
-	// Получение текущего времени воспроизведения циклограммы
-	Time GetCurrentPlayTime();
+	//Подготовка данных для следующего кадра
+	void FrameDataPreparation();
 
-	// Получение длины циклограммы
-	Time GetCyclogrammLength();
-
-	uint32_t GetFrameFromTime(Time& time);
+	//Проверяет доступность файла циклограммы. Если не файл не доступен, пытается переоткрыть его.
+	bool CheckFileAvailability();
 };
 
