@@ -403,7 +403,6 @@ void FastLEDInitialization()
 			pwmChannelIndex++;
 		}
 	}
-	FastLED.setBrightness(rlcSettings.SPILedGlobalBrightness);
 }
 
 void WaitingTimeSynchronization(IPAddress& ipAddress, uint16_t port)
@@ -497,6 +496,7 @@ void setup()
 
 	OpenCyclogrammFile();
 	rlcLedController->Initialize(FastLEDInitialization, cyclogrammFile, OpenCyclogrammFile);
+	FastLED.setBrightness(25);
 
 	IsDigitalOutput = rlcSettings.IsDigitalPWMSignal;
 	InvertedOutput = rlcSettings.InvertedPWMSignal;
@@ -512,6 +512,7 @@ void setup()
 		logger->Print("Wireless mode enabled");
 		WirelessSetup();
 	}
+	FastLED.setBrightness(rlcSettings.SPILedGlobalBrightness);
 	rlcLedController->Start();
 }
 

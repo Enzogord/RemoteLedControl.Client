@@ -221,7 +221,6 @@ void RLCLedController::NextFrame()
 }
 
 void RLCLedController::FrameDataPreparation() {
-	logger.Print("cyclogrammFile.available(): ", cyclogrammFile.available());
 	if(!CheckFileAvailability() || cyclogrammFile.available() < FrameBytes) {
 		InternalStop();
 		return;
