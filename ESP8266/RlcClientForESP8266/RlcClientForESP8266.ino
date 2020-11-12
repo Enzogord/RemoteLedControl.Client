@@ -2,6 +2,7 @@
  Name:		RlcClientForESP8266.ino
  Created:	3/9/2020 4:04:55 PM
  Author:	Enzo
+ Version:	1.1.2
 */
 
 #include <Ticker.h>
