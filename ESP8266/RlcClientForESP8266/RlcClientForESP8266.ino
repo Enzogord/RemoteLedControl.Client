@@ -113,9 +113,6 @@ void Initializations()
 	WiFi.softAPdisconnect(true);
 
 	InitializeSDCard();
-
-	// инициализируем пин, подключенный к кнопке, как вход
-	pinMode(wiredButtonPin, INPUT);
 }
 
 void InitializeSDCard()
@@ -456,6 +453,11 @@ void CheckWiredStart()
 
 void WiredSetup()
 {
+	if(rlcSettings.DisabledWiredMode) {
+		return;
+	}
+	// инициализируем пин, подключенный к кнопке, как вход
+	pinMode(wiredButtonPin, INPUT);
 	// считываем значения с входа кнопки  
 	wiredButtonState = GetButtonState();
 	wiredMode = wiredButtonState == HIGH;
@@ -498,6 +500,7 @@ void setup()
 	}
 	logger->Print("DefaultLightMode: ", rlcSettings.DefaultLightOn);
 	logger->Print("SPILedGlobalBrightness: ", rlcSettings.SPILedGlobalBrightness);
+	logger->Print("DisabledWiredMode: ", (int)rlcSettings.DisabledWiredMode);
 
 	OpenCyclogrammFile();
 	rlcLedController->Initialize(FastLEDInitialization, cyclogrammFile, OpenCyclogrammFile);
