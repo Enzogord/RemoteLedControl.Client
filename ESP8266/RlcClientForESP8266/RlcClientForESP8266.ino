@@ -56,6 +56,9 @@ RLCLedController* rlcLedController;
 MessageIdRegistry messageIdsRegistry = MessageIdRegistry();
 bool needSendState;
 
+double batteryFilterK = 0.1;  // коэффициент фильтрации уровня заряда, 0.0-1.0
+float batteryLevel = 2500;
+
 #pragma region Проводной запуск
 
 bool wiredMode = false;
@@ -110,9 +113,6 @@ void Initializations()
 	WiFi.softAPdisconnect(true);
 
 	InitializeSDCard();
-
-	// инициализируем пин, подключенный к кнопке, как вход
-	pinMode(wiredButtonPin, INPUT);
 }
 
 void InitializeSDCard()
@@ -229,7 +229,7 @@ void SendResponse(int32_t messageId)
 	if(!messageId) {
 		return;
 	}
-	RLCMessage message = messageFactory.SendState(GetClientState(), GetBatteryChargeLevel());
+	RLCMessage message = messageFactory.SendState(GetClientState(), batteryLevel);
 	message.MessageId = messageId;
 	SendMessage(message);
 }
@@ -320,15 +320,17 @@ void SendState()
 	if(!needSendState) {
 		return;
 	}
-	RLCMessage message = messageFactory.SendState(GetClientState(), GetBatteryChargeLevel());
+	RLCMessage message = messageFactory.SendState(GetClientState(), batteryLevel);
 	SendMessage(message);
 
 	needSendState = false;
 }
 
-inline uint16_t GetBatteryChargeLevel()
+
+inline uint16_t UpdateBatteryChargeLevel()
 {
-	(uint16_t)analogRead(A0);
+	logger->Print("Battery level: ", batteryLevel);
+	batteryLevel += ((float)analogRead(A0) - batteryLevel) * batteryFilterK;
 }
 
 void WiFiConnect() {
@@ -451,6 +453,11 @@ void CheckWiredStart()
 
 void WiredSetup()
 {
+	if(rlcSettings.DisabledWiredMode) {
+		return;
+	}
+	// инициализируем пин, подключенный к кнопке, как вход
+	pinMode(wiredButtonPin, INPUT);
 	// считываем значения с входа кнопки  
 	wiredButtonState = GetButtonState();
 	wiredMode = wiredButtonState == HIGH;
@@ -493,6 +500,7 @@ void setup()
 	}
 	logger->Print("DefaultLightMode: ", rlcSettings.DefaultLightOn);
 	logger->Print("SPILedGlobalBrightness: ", rlcSettings.SPILedGlobalBrightness);
+	logger->Print("DisabledWiredMode: ", (int)rlcSettings.DisabledWiredMode);
 
 	OpenCyclogrammFile();
 	rlcLedController->Initialize(FastLEDInitialization, cyclogrammFile, OpenCyclogrammFile);
@@ -526,6 +534,7 @@ void loop(void) {
 	else {
 		SendState();
 		ReadMessagesFromServer();
+		UpdateBatteryChargeLevel();
 		rlcLedController->Show();
 	}
 }

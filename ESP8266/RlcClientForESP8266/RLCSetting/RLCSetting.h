@@ -43,6 +43,7 @@ public:
 	uint8_t SPILedGlobalBrightness;
 	bool IsDigitalPWMSignal;
 	bool InvertedPWMSignal;
+	bool DisabledWiredMode;
 	ClientPin* Pins;
 	byte PinsCount;
 	RLCSetting();

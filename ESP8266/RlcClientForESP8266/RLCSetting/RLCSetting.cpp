@@ -155,6 +155,10 @@ void RLCSetting::SaveSetting(String name, String value)
 	{
 		InvertedPWMSignal = (value == "1");
 	}
+
+	if (name == "DisabledWiredMode") {
+		DisabledWiredMode = (value == "1");
+	}
 }
 
 void RLCSetting::ReadSetting(File SettingFile)
